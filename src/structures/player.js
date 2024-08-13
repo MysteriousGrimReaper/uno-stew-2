@@ -17,8 +17,20 @@ module.exports = class Player {
         this.popcorn ??= 1
         this.pizza ??= 1
         this.phrase ??= `hi`
+        this.chocolate ??= 0
         if (!this.user) {
             console.warn(`No user assigned to this player!`);
+        }
+        if (!this.game) {
+            console.warn(`No game assigned to this user!`)
+        }
+    }
+    /**
+     * Draw cards without skipping a turn.
+     */
+    add(count = 1) {
+        for (let i = 0; i < count; i++) {
+            this.hand.push(this.game.deck.deal())
         }
     }
     get name() {

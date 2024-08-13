@@ -1,20 +1,8 @@
 const fs = require("fs")
 const path = require("path")
 /**
- * Card color enums
+ * Card color names
  */
-class CardTypes {
-    static r = 0
-    static b = 1
-    static g = 2
-    static y = 3
-    static m = 4
-    static o = 5
-    static p = 6
-    static s = 7
-    static a = 8
-    static i = 9
-}
 class CardColors {
     static r = `Red`
     static b = `Blue`
@@ -26,35 +14,70 @@ class CardColors {
     static s = `Silver`
     static a = `Amber`
     static i = `Ivory`
-    /**
-     * Use this in conjunction with the CardTypes.
-     * @example CardColors.c_map[this.color]
-     */
-    static c_map = [`Red`, `Blue`, `Green`, `Yellow`, `Magenta`, `Orange`, `Pink`, `Silver`, `Amber`, `Ivory`]
 }
 // all card types
 class CardFace {
     constructor(card_data) {
         this.extra_text = ``
         Object.assign(this, card_data)
-        this.color ??= CardTypes.r
+        console.log(card_data)
+        this.color ??= `r`
         this.wild ??= false
         this.icon ??= `0`
         try {
-            const effect_module = require(path.join(__dirname, "../effects", this.effect))
+            const effect_module = require(path.join(__dirname, "../effects", this.icon + `.js`))
             Object.assign(this, effect_module) // assigns this.effect and this.display_name
         }
-        catch {
+        catch (error) {
             this.display_name = this.icon
         }
     }
-    display_text() {
-        return `${this.wild ? `Wild` : CardColors.c_map[this.color]} ${this.display_name} ${this.extra_text}`.trim()
+    /**
+     * @param [options={}] - Any options for how to display the text.
+     * - `hand` - as it would show up in your hand.
+     * @returns How this card will show up when in the discard pile.
+     */
+    display_text(options = {}) {
+        const {hand} = options
+        return `${this.wild ? `Wild` : CardColors[this.color]} ${this.display_name} ${this.extra_text}`.trim()
     }
 }
-
-module.exports = class Card {
-    constructor(front, back) {
-        
+class Card extends CardFace {
+    constructor(front_data, back_data) {
+        super(front_data)
+        this.back = new CardFace(back_data)
     }
+    /**
+     * Flips the card.
+     */
+    flip() {
+        const temp = {}
+        Object.assign(temp, this.back)
+        Object.assign(this.back, this)
+        Object.assign(this, temp)
+    }
+    /**
+     * 
+     * @param {string} text The message content to parse.
+     * @returns {number} Likelihood that this card is what the player is referring to.
+     */
+    parseInput(text) {
+        let likely = 0
+        if (text.includes(this.color)) {
+            likely += 1
+        }
+        if (text.includes(this.icon)) {
+            likely += 1
+        }
+        if (text.includes(this.color + this.icon)) {
+            likely += 1
+        }
+        // to-do: add in all the different possible parsing combinations
+        return likely
+    }
+}
+module.exports = {
+    Card,
+    CardColors,
+    CardFace
 }
