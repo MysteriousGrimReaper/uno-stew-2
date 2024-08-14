@@ -124,7 +124,7 @@ module.exports = class Game {
     }
     async process_input(message) {
         const {author, content} = message
-        
+        // to-do: add input processing
     }
     /**
      * 
