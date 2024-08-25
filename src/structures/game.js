@@ -1,8 +1,10 @@
-const { EmbedBuilder, ButtonBuilder } = require("discord.js")
+const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, Message, ButtonInteraction } = require("discord.js")
 const DiscardPile = require("./discardpile")
 const DrawPile = require("./drawpile")
 const Player = require("./player")
 const PlayerList = require("./player_list")
+const path = require("path")
+const { Card } = require("./card")
 /**
     * @typedef {Object} GameData
     * @property {string} deck The name of the deck to use.
@@ -59,7 +61,8 @@ module.exports = class Game {
         for (let dpile of this.discard_piles) {
             dpile.push(this.deck.deal())
         }
-        this.channel.send({embeds: [this.display_embed(`start_game`)]})
+        this.channel.send({embeds: [this.display_embed(`start_game`)], components: [this.buttons()]})
+        this.button_collector = this.interaction.client.on("interactionCreate", this.process_button)
     }
     // DECK COMMANDS
     replenish() {
@@ -99,7 +102,19 @@ module.exports = class Game {
             new ButtonBuilder()
             .setCustomId(`hand`)
             .setLabel(`Hand`)
+            .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+            .setCustomId(`table`)
+            .setLabel(`Table`)
+            .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+            .setCustomId(`players`)
+            .setLabel(`Players`)
+            .setStyle(ButtonStyle.Primary),
         ]
+        const default_action_row = new ActionRowBuilder()
+        .setComponents(buttons)
+        return default_action_row
     }
     // PLAYER MANAGEMENT COMMANDS
     /**
@@ -122,9 +137,79 @@ module.exports = class Game {
     removePlayer(player_resolvable) {
         return this.player_list.removePlayer(player_resolvable)
     }
-    async process_input(message) {
+    // PROCESSING COMMANDS
+    /**
+     * Process the input of a message.
+     * @param {Message} message The discord message to process.
+     */
+    process_input = async (message) => {
         const {author, content} = message
-        // to-do: add input processing
+        const player = this.player_list.findPlayer(author)
+        if (!player) {
+            // handle any audience things here
+            return
+        }
+        const play_object = player.hand.parse(content)
+        const discard_pile = this.discard_piles[play_object["dish"]]
+        let is_valid = false
+        const card = player.hand[play_object["card_index"]]
+        if (typeof card.customCheck == 'function') {
+            is_valid ||= card.customCheck({message, game: this})
+        }
+        else {
+            is_valid ||= card.color == discard_pile.top_card.color || card.icon == discard_pile.top_card.icon
+            is_valid ||= card.wild
+            is_valid ||= discard_pile.top_card.wild
+        }
+        if (!is_valid) {
+            return await message.reply(`You can't play that card there!`)
+        }
+        if (typeof card.customDiscardBehavior == 'function') {
+            card.customDiscardBehavior({message, game: this})
+        }
+        else {
+            discard_pile.push(player.hand.splice(play_object["card_index"], 1))
+        }
+        await process(card.effect)
+    }
+    /**
+     * Process a button interaction.
+     * @param {ButtonInteraction} button_interaction 
+     */
+    process_button = async (button_interaction) => {
+        if (!button_interaction.isButton()) {
+            return
+        }
+        const {customId, user} = button_interaction
+        const player = this.player_list.findPlayer(user.id)
+        switch (customId) {
+            case `hand`:
+                if (!player) {
+                    return button_interaction.reply({ephemeral: true, content: `You're not in this game!`})
+                }
+                button_interaction.reply({ephemeral: true, embeds: [player.hand.embed()], components: player.hand.buttons()}) // replace with: content: player.hand.text()
+                break
+            case `table`:
+                break
+            case `players`:
+                break
+            case `history`:
+                break
+            default: 
+                try {
+                    const effect = require(path.join(__dirname, `../effects/${customId}.js`))
+                    const effect_desc_embed = new EmbedBuilder()
+                    .setTitle(effect.display_name)
+                    .setDescription(effect.description)
+                    button_interaction.reply({ephemeral: true, embeds: [effect_desc_embed]})
+                }
+                catch (error) {
+                    button_interaction.update({content: `An error occurred: ${error}`})
+                    console.log(`An error occurred: ${error}`)
+                }
+            // add part for processing effect info too https://discord.com/channels/781354877560815646/1276074561858834452/1276074569685274635
+        }
+        
     }
     /**
      * 

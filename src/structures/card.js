@@ -20,13 +20,12 @@ class CardFace {
     constructor(card_data) {
         this.extra_text = ``
         Object.assign(this, card_data)
-        console.log(card_data)
         this.color ??= `r`
         this.wild ??= false
         this.icon ??= `0`
         try {
             const effect_module = require(path.join(__dirname, "../effects", this.icon + `.js`))
-            Object.assign(this, effect_module) // assigns this.effect and this.display_name
+            Object.assign(this, effect_module) // assigns this.effect, this.emoji, this.display_name
         }
         catch (error) {
             this.display_name = this.icon
@@ -57,7 +56,7 @@ class Card extends CardFace {
         Object.assign(this, temp)
     }
     /**
-     * 
+     * @deprecated don't use this
      * @param {string} text The message content to parse.
      * @returns {number} Likelihood that this card is what the player is referring to.
      */

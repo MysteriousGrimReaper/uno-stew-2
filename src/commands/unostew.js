@@ -46,7 +46,7 @@ module.exports = {
             })
             game.initialize({
                 players: player_list,
-                deck: `vanilla`
+                deck: `oops-all-skips`
             })
             game.start()
 

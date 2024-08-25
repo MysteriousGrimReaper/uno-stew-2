@@ -210,8 +210,6 @@ module.exports = {
 										ephemeral: true,
 									});
 								} else if (player_list.length < min_players) {
-									console.log(player_list.length - 1);
-									console.log(min_players);
 									await i.reply({
 										content:
 											"There aren't enough players yet!",

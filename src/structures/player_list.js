@@ -1,3 +1,5 @@
+const Player = require("./player")
+
 module.exports = class PlayerList extends Array {
     constructor() {
         super()
@@ -5,6 +7,7 @@ module.exports = class PlayerList extends Array {
     /**
      * 
      * @param {PlayerResolvable} player_resolvable
+     * @returns {Player}
      */
     findPlayer(player_resolvable) {
         const player = this[this.resolve(player_resolvable)]
@@ -21,7 +24,7 @@ module.exports = class PlayerList extends Array {
     removePlayer(player_resolvable) {
         return this.splice(this.findPlayerIndex(player_resolvable), 1)[0]
     }
-    addPlayer() {
-        
+    addPlayer(member) {
+        this.push(new Player({member, user: member.user}))
     }
 }

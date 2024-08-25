@@ -5,6 +5,12 @@ const Hand = require("./hand")
  * @property {User} user
  * @property {GuildMember} member
  */
+/**
+ * Represents a player object.
+ * 
+ * @class
+ * @classdesc 
+ */
 module.exports = class Player {
     
     /**
@@ -13,7 +19,7 @@ module.exports = class Player {
      */
     constructor(data) {
         Object.assign(this, data)
-        this.hand ??= new Hand()
+        this.hand ??= new Hand({player: this})
         this.popcorn ??= 1
         this.pizza ??= 1
         this.phrase ??= `hi`
