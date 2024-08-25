@@ -15,8 +15,11 @@ module.exports = class Game {
         this.is_processing = false
         this.effect_queue = []
         this.player_list = new PlayerList()
+        this.eliminated_list = new PlayerList() // anyone who loses all their lives goes here
         this.current_turn = 0
         this.starting_cards = 7
+        this.draw_stack = 0
+        this.play_direction = 1
         if (!this.interaction) {
             console.warn(`No interaction set for the game!`)
         }
@@ -143,13 +146,21 @@ module.exports = class Game {
      * @param {Message} message The discord message to process.
      */
     process_input = async (message) => {
-        const {author, content} = message
+        const {author, content, channel} = message
         const player = this.player_list.findPlayer(author)
         if (!player) {
             // handle any audience things here
             return
         }
         const play_object = player.hand.parse(content)
+        if (!play_object["dish"]) {
+            console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the dish.`)
+        }
+        if (play_object["card_index"] == undefined || isNaN(play_object["card_index"])) {
+            console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the card index.`)
+        }
         const discard_pile = this.discard_piles[play_object["dish"]]
         let is_valid = false
         const card = player.hand[play_object["card_index"]]
@@ -170,7 +181,8 @@ module.exports = class Game {
         else {
             discard_pile.push(player.hand.splice(play_object["card_index"], 1))
         }
-        await process(card.effect)
+        await this.process(card.effect)
+        await channel.send(`${player.name} played a ${card.display_text()} on dish ${play_object["dish"]}.`)
     }
     /**
      * Process a button interaction.
@@ -225,5 +237,25 @@ module.exports = class Game {
             await this.effect_queue[0](this)
             this.effect_queue.shift()
         }
+    }
+    // GAMEPLAY COMMANDS
+    /**
+     * Moves to the next player.
+     */
+    step() {
+        this.current_turn += this.play_direction + this.player_list.length
+        this.current_turn %= this.player_list.length
+    }
+    /**
+     * Reverses the turn order. Skips if there are only 2 players.
+     * @returns true if this skipped a player, false otherwise
+     */
+    reverse() {
+        this.play_direction *= -1
+        if (this.player_list.length <= 2) {
+            this.step()
+            return true
+        }
+        return false
     }
 }

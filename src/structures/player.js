@@ -27,6 +27,7 @@ module.exports = class Player {
         if (!this.user) {
             console.warn(`No user assigned to this player!`);
         }
+        this.id = this.user.id
         if (!this.game) {
             console.warn(`No game assigned to this user!`)
         }
