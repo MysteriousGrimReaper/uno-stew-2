@@ -4,5 +4,6 @@ module.exports = {
     description: `Skip the next player in the turn order.`,
     effect(game, data) {
         game.step()
+        return {text: `Sorry, ${game.player_list[game.current_turn]}, skip a turn!`}
     }
 }

@@ -182,7 +182,19 @@ module.exports = class Game {
             discard_pile.push(player.hand.splice(play_object["card_index"], 1))
         }
         await this.process(card.effect)
-        await channel.send(`${player.name} played a ${card.display_text()} on dish ${play_object["dish"]}.`)
+        let play_text = `${player.name} played a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
+        if (card.dontStep) {
+            play_text += ` ${player.name} takes another turn!`
+        }
+        else {
+            this.step()
+            play_text += ` It's now ${this.player_list[this.current_turn].name}'s turn!`
+        }
+        
+        await channel.send({ embeds: [
+            {description: play_text}
+        ]})
+
     }
     /**
      * Process a button interaction.
