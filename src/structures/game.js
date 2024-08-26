@@ -9,7 +9,14 @@ const { Card } = require("./card")
     * @typedef {Object} GameData
     * @property {string} deck The name of the deck to use.
  */
+/**
+ * @prop draw_stack
+ */
 module.exports = class Game {
+    /**
+     * 
+     * @param {GameData} data 
+     */
     constructor(data) {
         Object.assign(this, data)
         this.is_processing = false
@@ -19,13 +26,13 @@ module.exports = class Game {
         this.current_turn = 0
         this.starting_cards = 7
         this.draw_stack = 0
+        this.draw_stack_min = 0
+        this.draw_stack_pile = -1
         this.play_direction = 1
         if (!this.interaction) {
             console.warn(`No interaction set for the game!`)
         }
-        Object.assign(this, {
-            channel: this.interaction.channel
-        })
+        this.channel = this.interaction.channel
     }
     // GAME MANAGEMENT COMMANDS
     /**
@@ -140,6 +147,9 @@ module.exports = class Game {
     removePlayer(player_resolvable) {
         return this.player_list.removePlayer(player_resolvable)
     }
+    get current_player() {
+        return this.player_list[this.current_turn]
+    }
     // PROCESSING COMMANDS
     /**
      * Process the input of a message.
@@ -153,7 +163,7 @@ module.exports = class Game {
             return
         }
         const play_object = player.hand.parse(content)
-        if (!play_object["dish"]) {
+        if (play_object["card_index"] == undefined) {
             console.log(play_object)
             return message.reply(`Invalid input! Make sure to include the dish.`)
         }
@@ -181,7 +191,7 @@ module.exports = class Game {
         else {
             discard_pile.push(player.hand.splice(play_object["card_index"], 1))
         }
-        await this.process(card.effect)
+        await this.process(card.effect, {message, play_object})
         let play_text = `${player.name} played a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
         if (card.dontStep) {
             play_text += ` ${player.name} takes another turn!`
@@ -189,6 +199,9 @@ module.exports = class Game {
         else {
             this.step()
             play_text += ` It's now ${this.player_list[this.current_turn].name}'s turn!`
+        }
+        if (this.draw_stack > 0) {
+            play_text += `\n⚠️ **A draw card was played against you!** Play a draw card of +${this.draw_stack_min} or greater to pass it, or type \`d\` to draw **${this.draw_stack}** cards.`
         }
         
         await channel.send({ embeds: [
@@ -238,15 +251,18 @@ module.exports = class Game {
     /**
      * 
      * @param {function} effect The effect function to evaluate. Should take the current game state into effect.
+     * @param {Object} data The data to use, includes:
+     * @param message - the Discord message
+     * @param play_object - the play object (includes card index, dish)
      */
-    async process(effect) {
+    async process(effect, data) {
         this.effect_queue.push(effect)
         if (this.is_processing) {
             return
         }
         this.is_processing = true
         while (this.effect_queue.length > 0) {
-            await this.effect_queue[0](this)
+            await this.effect_queue[0](this, data)
             this.effect_queue.shift()
         }
     }
