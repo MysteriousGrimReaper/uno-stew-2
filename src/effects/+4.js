@@ -1,9 +1,9 @@
 const Game = require("../structures/game")
-const draw_count = 2
+const draw_count = 4
 module.exports = {
-    display_name: `+2`,
-    emoji: `<:draw_2:1276447672726978642>`,
-    description: `Make the next player draw two cards.`, draw_stackable: true,
+    display_name: `+4`,
+    emoji: `<:draw_4:1279852167435517973>`,
+    description: `Make the next player draw 4 cards.`, draw_stackable: true,
     /**
      * 
      * @param {Game} game 
@@ -17,6 +17,6 @@ module.exports = {
         game.draw_stack += draw_count
         game.draw_stack_min = draw_count
         game.draw_stack_pile = data?.play_object?.dish
-        return game.channel.send(`The next player must draw ${draw_count} more cards, for a total of **${game.draw_stack}** cards!`)
+        return game.channel.send(`The next player must draw ${ draw_count } more cards, for a total of **${game.draw_stack}** cards!`)
     }
 }

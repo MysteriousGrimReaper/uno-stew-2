@@ -17,6 +17,16 @@ class CardColors {
 }
 // all card types
 class CardFace {
+    static r = 0xee0000
+    static b = 0x0000ee
+    static g = 0x00ee00
+    static y = 0xeeee00
+    static m = 0xee00ee
+    static o = 0xee7700
+    static p = 0xee6666
+    static s = 0x999999
+    static a = 0x993300
+    static i = 0xdddddd
     constructor(card_data) {
         this.extra_text = ``
         Object.assign(this, card_data)
@@ -26,6 +36,7 @@ class CardFace {
         try {
             const effect_module = require(path.join(__dirname, "../effects", this.icon + `.js`))
             Object.assign(this, effect_module) // assigns this.effect, this.emoji, this.display_name
+            //console.log(this)
         }
         catch (error) {
             this.display_name = this.icon
@@ -39,6 +50,12 @@ class CardFace {
     display_text(options = {}) {
         const {hand} = options
         return `${this.wild ? `Wild` : CardColors[this.color]} ${this.display_name} ${this.extra_text}`.trim()
+    }
+    /**
+     * @returns The hex color of this card face.
+     */
+    get hex() {
+        return CardFace[this.color] ?? 0x000
     }
 }
 class Card extends CardFace {

@@ -1,0 +1,68 @@
+{
+	// Place your uno-stew-2 workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
+	// description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope 
+	// is left empty or omitted, the snippet gets applied to all languages. The prefix is what is 
+	// used to trigger the snippet and the body will be expanded and inserted. Possible variables are: 
+	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. 
+	// Placeholders with the same ids are connected.
+	// Example:
+	// "Print to console": {
+	// 	"scope": "javascript,typescript",
+	// 	"prefix": "log",
+	// 	"body": [
+	// 		"console.log('$1');",
+	// 		"$2"
+	// 	],
+	// 	"description": "Log output to console"
+	// }
+	"effect": {
+		"scope": "javascript,typescript",
+		"prefix": "effect",
+		"body": [
+			"const Game = require(`../structures/game`)",
+			"module.exports = {",
+			"\tdisplay_name: ``,",
+			"\temoji: ``,",
+			"\tdescription: ``,",
+			"\t/**",
+			"\t*" ,
+			"\t* @param {Game} game ",
+			"\t* @param {*} data ",
+			"\t*/",
+			"\teffect(game, data) {",
+			"\t}",
+			"}"
+		],
+		"description": "Template for effects."
+	},
+	"draw_effect": {
+		"scope": "javascript,typescript",
+		"prefix": "draw_effect",
+		"body": [
+			"const Game = require(\"../structures/game\")",
+"const draw_count = ${TM_FILENAME_BASE/[\\+]//}",
+"module.exports = {",
+"    display_name: `+${TM_FILENAME_BASE/[\\+]//}`,",
+"    emoji: `<:draw_2:1276447672726978642>`,",
+"    description: `Make the next player draw ${TM_FILENAME_BASE/[\\+]//} cards.`, draw_stackable: true,",
+"    /**",
+"     * ",
+"     * @param {Game} game ",
+"     * @param {*} data ",
+"     */",
+"    effect(game, data) {",
+"        if (game.draw_stack_min > draw_count) return game.channel.send(`You can't play that card, it's not powerful enough!`)",
+"        if (game.draw_stack_pile >= 0 && data?.play_object?.dish != game.draw_stack_pile) {",
+"            return game.channel.send(`To continue the stack, you must play on the same dish. (${game.draw_stack_pile})`)",
+"        }",
+"        game.draw_stack += draw_count",
+"        game.draw_stack_min = draw_count",
+"        game.draw_stack_pile = data?.play_object?.dish",
+"        return game.channel.send(`The next player must draw ${ draw_count } more cards, for a total of **${game.draw_stack}** cards!`)",
+"    }",
+"}",
+
+		],
+		"description": "Template for effects."
+	}
+}

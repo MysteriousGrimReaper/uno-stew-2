@@ -51,4 +51,5 @@ module.exports = class DrawPile extends Array {
         }
         this.shuffle()
     }
+    
 }

@@ -28,17 +28,22 @@ module.exports = class Game {
         this.draw_stack = 0
         this.draw_stack_min = 0
         this.draw_stack_pile = -1
+        this.last_pile = 0
         this.play_direction = 1
         if (!this.interaction) {
             console.warn(`No interaction set for the game!`)
         }
+        /**
+         * @type {import("discord.js").Channel}
+         */
         this.channel = this.interaction.channel
     }
+
     // GAME MANAGEMENT COMMANDS
     /**
      * @param {GameData} data The information to initialize the series with. (done at the very start of a series)
      */
-    initialize(data) {
+    async initialize(data) {
         const {deck, players} = data
         this.deck = new DrawPile({
             game: this
@@ -57,8 +62,8 @@ module.exports = class Game {
         this.input_collector = this.channel.createMessageCollector({
             filter: (m) => !m.author.bot
         })
-        this.input_collector.on(`collect`, this.process_input)
-        console.log(`Game initialized with ${this.player_list.length} players.`)
+        this.input_collector.on(`collect`, await this.process_input)
+        // console.log(`Game initialized with ${this.player_list.length} players.`)
     }
     /**
      * Start a game.
@@ -74,7 +79,11 @@ module.exports = class Game {
         this.channel.send({embeds: [this.display_embed(`start_game`)], components: [this.buttons()]})
         this.button_collector = this.interaction.client.on("interactionCreate", this.process_button)
     }
+
     // DECK COMMANDS
+    /**
+     * Replenishes the deck with cards from the discard piles.
+     */
     replenish() {
         for (let pile of this.discard_piles) {
             while (pile.length > 1) {
@@ -83,28 +92,45 @@ module.exports = class Game {
         }
         this.deck.shuffle()
     }
+
     // EMBEDS
     /**
      * 
      * @param {string} type The type of embed to display
      * - start_game - Displays the start of a new game. 
-     * - table - Displays the table embed
+     * - table - Displays the table embed.
+     * - play_card - (uses options) Displays the embed after playing a card.
+     * @param {Object} options Any additional information to add:
+     * - text - The text to prepend on the embed.
      */
-    display_embed(type) {
+    display_embed(type, options = {}) {
+        // console.log(this.discard_piles)
         let current_top_cards_text = `The current top cards are:\n${
-            this.discard_piles.map(pile => pile[pile.length - 1].display_text())
-            .map((card_text, index) => `Dish ${index + 1}: **${card_text}**`)
+            this.discard_piles.map(pile => {
+                // console.log(pile.top_card)
+                return pile.top_card.display_text()})
+            .map((card_text, index) => `${index != this.draw_stack_pile && this.draw_stack_pile != -1 ? `🚫 ` : `` }Dish ${index + 1}: **${card_text}**`)
             .join(`\n`)
         }`
+        const embed = this.default_embed
         switch (type) {
             case `start_game`: 
-                return {
-                    description: `A new UNO Stew match has started! ${current_top_cards_text}`
-                }
+                embed.description = `A new UNO Stew match has started! ${current_top_cards_text}`
+                return embed
             case `table`:
-                return {
-                    description: `${current_top_cards_text}`
-                }
+                embed.description = `${current_top_cards_text}`
+                return embed
+            case `play_card`:
+                embed.description = options.text + `\n\n${current_top_cards_text}`
+                return embed
+        }
+    }
+    /**
+     * The base embed used for other embeds.
+     */
+    get default_embed() {
+        return {
+            color: this.discard_piles[this.last_pile].top_card.hex,
         }
     }
     buttons() {
@@ -126,6 +152,7 @@ module.exports = class Game {
         .setComponents(buttons)
         return default_action_row
     }
+
     // PLAYER MANAGEMENT COMMANDS
     /**
      * 
@@ -150,6 +177,7 @@ module.exports = class Game {
     get current_player() {
         return this.player_list[this.current_turn]
     }
+
     // PROCESSING COMMANDS
     /**
      * Process the input of a message.
@@ -162,52 +190,44 @@ module.exports = class Game {
             // handle any audience things here
             return
         }
-        const play_object = player.hand.parse(content)
-        if (play_object["card_index"] == undefined) {
-            console.log(play_object)
-            return message.reply(`Invalid input! Make sure to include the dish.`)
+        const parseInputType = (text) => {
+            text = text.toLowerCase()
+            if (text == `close`) {
+                return `close`
+            }
+            if (text == `draw` || text == `d`) {
+                return `draw`
+            }
+            if (/^\d/.test(text)) {
+                return `play`
+            }
+            if (text.startsWith(`debug load`) ) {
+                return `debug load`
+            }
+            return false
         }
-        if (play_object["card_index"] == undefined || isNaN(play_object["card_index"])) {
-            console.log(play_object)
-            return message.reply(`Invalid input! Make sure to include the card index.`)
+        // console.log(parseInputType(content))
+        switch (parseInputType(content)) {
+            case `play`:
+                this.cardInputHandler(message, player)
+                break
+            case `draw`:
+                this.drawHandler(message, player)
+                break
+            case `close`:
+                this.input_collector.off(`connect`, await this.process_input)
+                message.reply(`Game closed.`)
+                break
+            case `debug load`:
+                try {
+                    this.deck.load(content.split(` `)[2])
+                    message.reply(`Deck loaded.`)
+                }
+                catch {
+                    message.reply(`Couldn't find deck \`${content.split(` `)[2]}\`.`)
+                }
+                break
         }
-        const discard_pile = this.discard_piles[play_object["dish"]]
-        let is_valid = false
-        const card = player.hand[play_object["card_index"]]
-        if (typeof card.customCheck == 'function') {
-            is_valid ||= card.customCheck({message, game: this})
-        }
-        else {
-            is_valid ||= card.color == discard_pile.top_card.color || card.icon == discard_pile.top_card.icon
-            is_valid ||= card.wild
-            is_valid ||= discard_pile.top_card.wild
-        }
-        if (!is_valid) {
-            return await message.reply(`You can't play that card there!`)
-        }
-        if (typeof card.customDiscardBehavior == 'function') {
-            card.customDiscardBehavior({message, game: this})
-        }
-        else {
-            discard_pile.push(player.hand.splice(play_object["card_index"], 1))
-        }
-        await this.process(card.effect, {message, play_object})
-        let play_text = `${player.name} played a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
-        if (card.dontStep) {
-            play_text += ` ${player.name} takes another turn!`
-        }
-        else {
-            this.step()
-            play_text += ` It's now ${this.player_list[this.current_turn].name}'s turn!`
-        }
-        if (this.draw_stack > 0) {
-            play_text += `\n⚠️ **A draw card was played against you!** Play a draw card of +${this.draw_stack_min} or greater to pass it, or type \`d\` to draw **${this.draw_stack}** cards.`
-        }
-        
-        await channel.send({ embeds: [
-            {description: play_text}
-        ]})
-
     }
     /**
      * Process a button interaction.
@@ -227,6 +247,7 @@ module.exports = class Game {
                 button_interaction.reply({ephemeral: true, embeds: [player.hand.embed()], components: player.hand.buttons()}) // replace with: content: player.hand.text()
                 break
             case `table`:
+                button_interaction.reply({ephemeral: true, embeds: [this.display_embed(`table`)], components: [this.buttons()]})
                 break
             case `players`:
                 break
@@ -242,16 +263,21 @@ module.exports = class Game {
                 }
                 catch (error) {
                     button_interaction.update({content: `An error occurred: ${error}`})
-                    console.log(`An error occurred: ${error}`)
+                    // console.log(`An error occurred: ${error}`)
                 }
             // add part for processing effect info too https://discord.com/channels/781354877560815646/1276074561858834452/1276074569685274635
         }
         
     }
     /**
+     * @typedef {Object} EffectProcessData
+     * @param {Message} message
+     * @param {Object} play_object
+     */
+    /**
      * 
      * @param {function} effect The effect function to evaluate. Should take the current game state into effect.
-     * @param {Object} data The data to use, includes:
+     * @param {EffectProcessData} data The data to use, includes:
      * @param message - the Discord message
      * @param play_object - the play object (includes card index, dish)
      */
@@ -265,7 +291,93 @@ module.exports = class Game {
             await this.effect_queue[0](this, data)
             this.effect_queue.shift()
         }
+        console.log(`processing complete`)
+        this.is_processing = false
     }
+
+    // HANDLERS
+    async cardInputHandler(message, player) {
+        const {author, content, channel} = message
+        const pre_effect_current_turn = this.current_turn
+        const play_object = player.hand.parse(content)
+        if (play_object["card_index"] == undefined) {
+            // console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the dish.`)
+        }
+        if (play_object["card_index"] == undefined || isNaN(play_object["card_index"])) {
+            // console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the card index.`)
+        }
+        const discard_pile = this.discard_piles[play_object["dish"]]
+        let is_valid = false
+        const card = player.hand[play_object["card_index"]]
+        // custom check
+        if (typeof card.customCheck == 'function') {
+            is_valid ||= card.customCheck({message, game: this})
+        }
+        // default check
+        else {
+            is_valid ||= card.color == discard_pile.top_card.color || card.icon == discard_pile.top_card.icon
+            is_valid ||= card.wild
+            is_valid ||= discard_pile.top_card.wild
+        }
+        if (this.draw_stack > 0) {
+            console.log(card.draw_stackable)
+            is_valid &&= card.draw_stackable
+        }
+        if (!is_valid) {
+            return await message.reply(`You can't play that card there!`)
+        }
+        if (typeof card.customDiscardBehavior == 'function') {
+            card.customDiscardBehavior({message, game: this})
+        }
+        else {
+            discard_pile.push(player.hand.splice(play_object["card_index"], 1)[0])
+        }
+        await this.process(card.effect, {message, play_object})
+        let play_text = `${player.name} played a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
+        if (card.dontStep) {
+            if (pre_effect_current_turn == this.current_turn) {
+                play_text += ` ${player.name} takes another turn!`
+            }
+            else {
+                play_text += ` It's now ${this.player_list[this.current_turn].name}'s turn!`
+            }
+        }
+        else {
+            this.step()
+            play_text += ` It's now ${this.player_list[this.current_turn].name}'s turn!`
+        }
+        if (this.draw_stack > 0) {
+            play_text += `\n\n⚠️ **A draw card was played against you!** Play a draw card of +${this.draw_stack_min} or greater to pass it, or type \`d\` to draw **${this.draw_stack}** cards.`
+        }
+        this.last_pile = play_object["dish"]
+        await channel.send({ 
+            embeds: [this.display_embed(`play_card`, {text: play_text})],
+            components: [this.buttons()]})
+    }
+    async drawHandler(message, player) {
+        const {author, content, channel} = message
+        if (player.id != this.current_player.id) {
+            return
+        }
+        let play_text = ``
+        if (this.draw_stack > 0) {
+            const draw_count = this.resetDrawStack()
+            this.draw(draw_count, player)
+            play_text += `${player.name} drew **${draw_count}** cards. `
+        }
+        else {
+            this.draw(1, player)
+            play_text += `${player.name} drew a card. `
+        }
+        play_text += `It's now ${this.current_player.name}'s turn!`
+        return await channel.send({embeds: [
+            this.display_embed(`play_card`, {text: play_text})
+        ],
+        components: [this.buttons()]})
+    }
+
     // GAMEPLAY COMMANDS
     /**
      * Moves to the next player.
@@ -275,15 +387,29 @@ module.exports = class Game {
         this.current_turn %= this.player_list.length
     }
     /**
-     * Reverses the turn order. Skips if there are only 2 players.
+     * Reverses the turn order.
+     * @param {boolean} skipIfTwoPlayers Skip if there are only 2 players (default true)
      * @returns true if this skipped a player, false otherwise
      */
-    reverse() {
+    reverse(skipIfTwoPlayers = true) {
         this.play_direction *= -1
-        if (this.player_list.length <= 2) {
+        if (this.player_list.length <= 2 && skipIfTwoPlayers) {
             this.step()
             return true
         }
         return false
     }
+    draw(count, player = this.current_player) {
+        player.add(count)
+        this.step()
+    }
+    resetDrawStack() {
+        const draw_value = this.draw_stack
+        this.draw_stack = 0
+        this.draw_stack_min = 0
+        this.draw_stack_pile = -1
+        return draw_value
+    }
+
+    // DEBUG
 }

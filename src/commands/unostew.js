@@ -49,7 +49,11 @@ module.exports = {
                 deck: `oops-all-skips`
             })
             game.start()
-
+			interaction.client.on(`messageCreate`, (message) => {
+				if (message.content.toLowerCase() == `close` && message.channel.id == channel.id) {
+					currently_playing_channels.splice(currently_playing_channels.indexOf(channel.id), 1)
+				}
+			})
 		} else {
 			currently_playing_channels.splice(currently_playing_channels.indexOf(channel.id), 1)
 		}

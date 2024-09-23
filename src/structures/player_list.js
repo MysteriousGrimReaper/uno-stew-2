@@ -18,8 +18,16 @@ module.exports = class PlayerList extends Array {
         return player
     }
     resolve(player_resolvable) {
-        return this.findIndex(p => p.user.id == player_resolvable) ??
-        this.findIndex(p => p.name == player_resolvable)
+        let id_resolve = this.findIndex(p => p.user.id == player_resolvable)
+        if (id_resolve >= 0) {
+            return id_resolve
+        }
+        id_resolve = this.findIndex(p => p.user.id == player_resolvable.id)
+        if (id_resolve >= 0) {
+            return id_resolve
+        }
+        id_resolve = this.findIndex(p => p.name.toLowerCase() == player_resolvable.toLowerCase())
+        return id_resolve
     }
     removePlayer(player_resolvable) {
         return this.splice(this.findPlayerIndex(player_resolvable), 1)[0]

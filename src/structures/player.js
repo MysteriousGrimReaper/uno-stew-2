@@ -9,7 +9,7 @@ const Hand = require("./hand")
  * Represents a player object.
  * 
  * @class
- * @classdesc 
+ * @prop {Hand} hand
  */
 module.exports = class Player {
     
@@ -27,7 +27,6 @@ module.exports = class Player {
         if (!this.user) {
             console.warn(`No user assigned to this player!`);
         }
-        this.id = this.user.id
         if (!this.game) {
             console.warn(`No game assigned to this user!`)
         }
@@ -40,8 +39,11 @@ module.exports = class Player {
             this.hand.push(this.game.deck.deal())
         }
     }
+    
     get name() {
         return this.user.globalName ?? this.user.username
     }
-    
+    get id() {
+        return this.user.id
+    }
 }
