@@ -79,6 +79,10 @@ module.exports = {
 					.setCustomId("settings")
 					.setLabel("Settings")
 					.setStyle(ButtonStyle.Secondary);
+				const test_button = new ButtonBuilder()
+					.setCustomId("addplayer")
+					.setLabel("Add Player")
+					.setStyle(ButtonStyle.Secondary)
 				const menu_button_row = new ActionRowBuilder().addComponents(
 					join_button,
 					quit_button,
@@ -86,10 +90,13 @@ module.exports = {
 					rules_button,
 					settings_button
 				);
+				const test_button_row = new ActionRowBuilder().addComponents(
+					test_button
+				)
 				const send_signup_message = async () => {
 					const signup_message = await game_channel.send({
 						embeds: [signup_embed()],
-						components: [menu_button_row],
+						components: [menu_button_row, test_button_row],
 					});
 					const collector =
 						signup_message.createMessageComponentCollector({
@@ -147,7 +154,7 @@ module.exports = {
 											});
 											await signup_message.edit({
 												embeds: [signup_embed()],
-												components: [menu_button_row],
+												components: [menu_button_row, test_button_row],
 											});
 											interaction.client.off(
 												Events.InteractionCreate,
@@ -163,7 +170,7 @@ module.exports = {
 									});
 									signup_message.edit({
 										embeds: [signup_embed()],
-										components: [menu_button_row],
+										components: [menu_button_row, test_button_row],
 									});
 								}
 								break;
@@ -198,7 +205,7 @@ module.exports = {
 
 									signup_message.edit({
 										embeds: [signup_embed()],
-										components: [menu_button_row],
+										components: [menu_button_row, test_button_row],
 									});
 								}
 								break;
@@ -221,6 +228,61 @@ module.exports = {
 										ephemeral: true,
 									});
 									collector.stop(`Started`);
+								}
+								break;
+							case "addplayer":
+								if (join_modal) {
+									await i.showModal(join_modal);
+									interaction.client.on(
+										Events.InteractionCreate,
+										async function modal_response(
+											modal_interaction
+										) {
+											if (
+												!modal_interaction.isModalSubmit() ||
+												modal_interaction.user.id !=
+													i.user.id ||
+												join_modal.toJSON()[
+													`custom_id`
+												] != modal_interaction.customId
+											) {
+												interaction.client.off(
+													Events.InteractionCreate,
+													modal_response
+												);
+												return;
+											}
+											await modal_interaction.reply({
+												content:
+													"You have joined the game!",
+												ephemeral: true,
+											});
+											player_list.push(user);
+											submissions_list.push({
+												user: user,
+												submission:
+													modal_interaction.fields[
+														`fields`
+													],
+												full_modal_interaction:
+													modal_interaction,
+											});
+											await signup_message.edit({
+												embeds: [signup_embed()],
+												components: [menu_button_row, test_button_row],
+											});
+											interaction.client.off(
+												Events.InteractionCreate,
+												modal_response
+											);
+										}
+									);
+								} else {
+									player_list.push(user);
+									await i.update({
+										embeds: [signup_embed()],
+										components: [menu_button_row, test_button_row],
+									});
 								}
 								break;
 						}

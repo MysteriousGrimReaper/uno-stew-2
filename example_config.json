@@ -1,0 +1,7 @@
+{
+    "test": false,
+    "token": "<your-token-here>",
+    "clientId": "<your-client-id-here>",
+    "guildId": "<your-guild-id-here>",
+    "deck": "vanilla"
+}

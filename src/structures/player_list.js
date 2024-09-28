@@ -7,7 +7,7 @@ module.exports = class PlayerList extends Array {
     /**
      * 
      * @param {PlayerResolvable} player_resolvable
-     * @returns {Player}
+     * @returns {Player} player if it finds a player, undefined otherwise
      */
     findPlayer(player_resolvable) {
         const player = this[this.resolve(player_resolvable)]

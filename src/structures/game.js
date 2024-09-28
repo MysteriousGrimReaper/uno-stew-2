@@ -34,7 +34,7 @@ module.exports = class Game {
             console.warn(`No interaction set for the game!`)
         }
         /**
-         * @type {import("discord.js").Channel}
+         * @type {Channel}
          */
         this.channel = this.interaction.channel
     }
@@ -190,6 +190,9 @@ module.exports = class Game {
             // handle any audience things here
             return
         }
+        if (this.is_processing) {
+            return
+        }
         const parseInputType = (text) => {
             text = text.toLowerCase()
             if (text == `close`) {
@@ -229,46 +232,7 @@ module.exports = class Game {
                 break
         }
     }
-    /**
-     * Process a button interaction.
-     * @param {ButtonInteraction} button_interaction 
-     */
-    process_button = async (button_interaction) => {
-        if (!button_interaction.isButton()) {
-            return
-        }
-        const {customId, user} = button_interaction
-        const player = this.player_list.findPlayer(user.id)
-        switch (customId) {
-            case `hand`:
-                if (!player) {
-                    return button_interaction.reply({ephemeral: true, content: `You're not in this game!`})
-                }
-                button_interaction.reply({ephemeral: true, embeds: [player.hand.embed()], components: player.hand.buttons()}) // replace with: content: player.hand.text()
-                break
-            case `table`:
-                button_interaction.reply({ephemeral: true, embeds: [this.display_embed(`table`)], components: [this.buttons()]})
-                break
-            case `players`:
-                break
-            case `history`:
-                break
-            default: 
-                try {
-                    const effect = require(path.join(__dirname, `../effects/${customId}.js`))
-                    const effect_desc_embed = new EmbedBuilder()
-                    .setTitle(effect.display_name)
-                    .setDescription(effect.description)
-                    button_interaction.reply({ephemeral: true, embeds: [effect_desc_embed]})
-                }
-                catch (error) {
-                    button_interaction.update({content: `An error occurred: ${error}`})
-                    // console.log(`An error occurred: ${error}`)
-                }
-            // add part for processing effect info too https://discord.com/channels/781354877560815646/1276074561858834452/1276074569685274635
-        }
-        
-    }
+    
     /**
      * @typedef {Object} EffectProcessData
      * @param {Message} message
@@ -282,7 +246,9 @@ module.exports = class Game {
      * @param play_object - the play object (includes card index, dish)
      */
     async process(effect, data) {
-        this.effect_queue.push(effect)
+        if (typeof effect == "function") {
+            this.effect_queue.push(effect)
+        }
         if (this.is_processing) {
             return
         }
@@ -297,6 +263,9 @@ module.exports = class Game {
 
     // HANDLERS
     async cardInputHandler(message, player) {
+        if (this.is_processing) {
+            return
+        }
         const {author, content, channel} = message
         const pre_effect_current_turn = this.current_turn
         const play_object = player.hand.parse(content)
@@ -320,6 +289,9 @@ module.exports = class Game {
             is_valid ||= card.color == discard_pile.top_card.color || card.icon == discard_pile.top_card.icon
             is_valid ||= card.wild
             is_valid ||= discard_pile.top_card.wild
+            if (card.stack_on) {
+                is_valid ||= card.stack_on.includes(discard_pile.top_card.icon)
+            }
         }
         if (this.draw_stack > 0) {
             console.log(card.draw_stackable)
@@ -377,7 +349,53 @@ module.exports = class Game {
         ],
         components: [this.buttons()]})
     }
-
+    /**
+     * Process a button interaction.
+     * @param {ButtonInteraction} button_interaction 
+     */
+    process_button = async (button_interaction) => {
+        if (!button_interaction.isButton()) {
+            return
+        }
+        const {customId, user} = button_interaction
+        if (customId.startsWith("effect-")) {
+            return
+        }
+        const player = this.player_list.findPlayer(user.id)
+        switch (customId) {
+            case `hand`:
+                if (!player) {
+                    return button_interaction.reply({ephemeral: true, content: `You're not in this game!`})
+                }
+                button_interaction.reply({ephemeral: true, embeds: [player.hand.embed()], components: player.hand.buttons()}) // replace with: content: player.hand.text()
+                break
+            case `table`:
+                button_interaction.reply({ephemeral: true, embeds: [this.display_embed(`table`)], components: [this.buttons()]})
+                break
+            case `players`:
+                break
+            case `history`:
+                break
+            default: 
+                try {
+                    const effect = require(path.join(__dirname, `../effects/${customId}.js`))
+                    let desc = effect.description
+                    if (effect.stack_on) {
+                        desc += `\n\nCan also stack on: ${effect.stack_on.map(icon => require(path.join(__dirname, `../effects/${icon}.js`)).display_name).join(`, `)}`
+                    }
+                    const effect_desc_embed = new EmbedBuilder()
+                    .setTitle(effect.display_name)
+                    .setDescription(desc)
+                    button_interaction.reply({ephemeral: true, embeds: [effect_desc_embed]})
+                }
+                catch (error) {
+                    button_interaction.update({content: `An error occurred: ${error}`})
+                    // console.log(`An error occurred: ${error}`)
+                }
+            // add part for processing effect info too https://discord.com/channels/781354877560815646/1276074561858834452/1276074569685274635
+        }
+        
+    }
     // GAMEPLAY COMMANDS
     /**
      * Moves to the next player.
@@ -399,9 +417,19 @@ module.exports = class Game {
         }
         return false
     }
-    draw(count, player = this.current_player) {
+    /**
+     * 
+     * @param {number} count How many cards to draw
+     * @param {Player} player The player to make draw
+     * @param {boolean} move Whether or not to move on after drawing
+     * @returns 
+     */
+    draw(count, player = this.current_player, move = true) {
         player.add(count)
-        this.step()
+        if (move) {
+            this.step()
+        }
+        return count
     }
     resetDrawStack() {
         const draw_value = this.draw_stack
@@ -410,6 +438,17 @@ module.exports = class Game {
         this.draw_stack_pile = -1
         return draw_value
     }
-
+    /**
+     * Flip all cards.
+     */
+    flip() {
+        this.deck.flip()
+        for (const d in this.discard_piles) {
+            d.flip()
+        }
+        for (const p in this.player_list) {
+            p.hand.flip()
+        }
+    }
     // DEBUG
 }

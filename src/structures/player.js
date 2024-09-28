@@ -18,6 +18,7 @@ module.exports = class Player {
      * @param {PlayerData} data 
      */
     constructor(data) {
+        this.test = false
         Object.assign(this, data)
         this.hand ??= new Hand({player: this})
         this.popcorn ??= 1

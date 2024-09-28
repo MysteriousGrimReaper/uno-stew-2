@@ -51,5 +51,9 @@ module.exports = class DrawPile extends Array {
         }
         this.shuffle()
     }
-    
+    flip() {
+        for (const c of this) {
+            c.flip()
+        }
+    }
 }

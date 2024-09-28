@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js")
+const { Card } = require("./card")
 
 module.exports = class Hand extends Array {
     constructor(data) {
@@ -45,13 +46,21 @@ module.exports = class Hand extends Array {
             }
             if (index == 0) {
                 play_object["card_index"] = parseInt(message_content) - 1
+                play_object["card"] = this[parseInt(message_content) - 1]
             }
             index--
         }
         return play_object
     }
-    text() {
-        return this.map((card, index) => `${index + 1}. ${card.display_text({hand: true})}`).join(`\n`)
+    text(strike = () => false) {
+        let text_builder = (card, index) => {
+            let text = `${index + 1}. ${card.display_text({hand: true})}`
+            if (!card.isValid(this.player.game) || strike(card, this.player.game)) {
+                text += ` 🚫`
+            }
+            return text
+        }
+        return this.map(text_builder).join(`\n`)
     }
     /**
      * 
@@ -69,7 +78,11 @@ module.exports = class Hand extends Array {
      */
     buttons() {
         let index = 0
-        const raw_icons = this.filter(card => card.effect)
+        const effects = this.filter(card => card.effect)
+        if (effects.length < 1) {
+            return []
+        }
+        const raw_icons = effects
         // reduction 1: filter unique icons
         .reduce((acc, cv) => {
             if (acc.some(card => card.icon == cv.icon)) {
@@ -82,7 +95,7 @@ module.exports = class Hand extends Array {
         }, [])
         // reduction 2: sort into grid array
         .reduce((acc, card) => {
-            if (acc[index].length >= 4) {
+            if (acc[index].length > 4) {
                 index++
             }
             if (!acc[index]) {
@@ -101,5 +114,20 @@ module.exports = class Hand extends Array {
             }))
         })
         return buttons
+    }
+    /**
+     * Flip every card in the hand.
+     */
+    flip() {
+        for (const c of this) {
+            c.flip()
+        }
+    }
+    /**
+     * @param index Index of the card
+     * @returns {Card} the discarded card
+     */
+    discard(index) {
+        return this.splice(index, 1)[0]
     }
 }

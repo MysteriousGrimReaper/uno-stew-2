@@ -12,6 +12,7 @@ const {
 const path = require("node:path");
 const Game = require("../structures/game");
 const {create_signup} = require(path.join(__dirname, `../discord-utils/signup.js`))
+const {deck, test} = require("../../config.json")
 const rules_embed = new EmbedBuilder()
 	.setTitle(`Uno Stew Rules`)
 	.setDescription(
@@ -32,21 +33,32 @@ module.exports = {
         const {channel} = interaction
 		currently_playing_channels.push(channel.id);
 		const league = interaction.options.getBoolean(`league`);
-		const player_list = await create_signup({
-			interaction,
-			game_name: league ? "Uno League" : "Uno Stew",
-			min_players: 2,
-			minutes: 7,
-			rules: [rules_embed],
-			embed_color: 0xec1e22,
-		});
+		let player_list
+		if (test) {
+			const {client} = interaction
+			player_list = [
+				await client.users.fetch("315495597874610178"),
+				await client.users.fetch("224214982756270082"),
+				await client.users.fetch("1014413186017021952")
+			]
+		}
+		else {
+			player_list = await create_signup({
+				interaction,
+				game_name: league ? "Uno League" : "Uno Stew",
+				min_players: 2,
+				minutes: 7,
+				rules: [rules_embed],
+				embed_color: 0xec1e22,
+			});
+		}
 		if (player_list !== null) {
             const game = new Game({
                 interaction
             })
             game.initialize({
                 players: player_list,
-                deck: `oops-all-skips`
+                deck
             })
             game.start()
 			interaction.client.on(`messageCreate`, (message) => {

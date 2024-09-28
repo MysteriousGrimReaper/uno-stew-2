@@ -29,6 +29,7 @@ class CardFace {
     static i = 0xdddddd
     constructor(card_data) {
         this.extra_text = ``
+        this.draw_stackable = false
         Object.assign(this, card_data)
         this.color ??= `r`
         this.wild ??= false
@@ -71,6 +72,12 @@ class Card extends CardFace {
         Object.assign(temp, this.back)
         Object.assign(this.back, this)
         Object.assign(this, temp)
+    }
+    isValid(game) {
+        if (game.draw_stack > 0 && !this.draw_stackable) {
+            return false
+        }
+        return true
     }
     /**
      * @deprecated don't use this
