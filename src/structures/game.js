@@ -4,7 +4,10 @@ const DrawPile = require("./drawpile")
 const Player = require("./player")
 const PlayerList = require("./player_list")
 const path = require("path")
-const { Card } = require("./card")
+const { Card, CardColors } = require("./card")
+const InputCollector = require("../discord-utils/input_collector")
+const fs = require("fs")
+const subsystems = fs.readdirSync(path.join(__dirname, "game-subsystems")).map(ss => require(path.join(__dirname, "game-subsystems", ss)))
 /**
     * @typedef {Object} GameData
     * @property {string} deck The name of the deck to use.
@@ -30,6 +33,7 @@ module.exports = class Game {
         this.draw_stack_pile = -1
         this.last_pile = 0
         this.play_direction = 1
+        this.winner = false
         if (!this.interaction) {
             console.warn(`No interaction set for the game!`)
         }
@@ -37,63 +41,93 @@ module.exports = class Game {
          * @type {Channel}
          */
         this.channel = this.interaction.channel
-    }
 
-    // GAME MANAGEMENT COMMANDS
-    /**
-     * @param {GameData} data The information to initialize the series with. (done at the very start of a series)
-     */
-    async initialize(data) {
-        const {deck, players} = data
-        this.deck = new DrawPile({
-            game: this
-        })
-        this.deck.load(deck)
-        this.discard_piles = [
-            new DiscardPile({game: this}),
-            new DiscardPile({game: this}),
-            new DiscardPile({game: this}),
-            new DiscardPile({game: this})
-        ]
-        this.addPlayers(...players)
-        this.player_list.forEach(p => {
-            p.chocolate = 0
-        })
-        this.input_collector = this.channel.createMessageCollector({
-            filter: (m) => !m.author.bot
-        })
-        this.input_collector.on(`collect`, await this.process_input)
-        // console.log(`Game initialized with ${this.player_list.length} players.`)
-    }
-    /**
-     * Start a game.
-     */
-    start() {
-        this.deck.shuffle()
-        for (let player of this.player_list) {
-            player.add(this.starting_cards)
-        }
-        for (let dpile of this.discard_piles) {
-            dpile.push(this.deck.deal())
-        }
-        this.channel.send({embeds: [this.display_embed(`start_game`)], components: [this.buttons()]})
-        this.button_collector = this.interaction.client.on("interactionCreate", this.process_button)
-    }
-
-    // DECK COMMANDS
-    /**
-     * Replenishes the deck with cards from the discard piles.
-     */
-    replenish() {
-        for (let pile of this.discard_piles) {
-            while (pile.length > 1) {
-                this.deck.push(pile.shift())
+        // add all functions
+        for (const ss of subsystems) {
+            function withFirstArg(firstArg, fn) {
+                const f = (...args) => fn(firstArg, ...args)
+                return f;
+            }
+            const static_functions = Object.getOwnPropertyNames(ss).filter(prop => {
+                return typeof ss[prop] === 'function' && prop !== 'length' && prop !== 'prototype' && prop !== 'name';
+            });
+            for (const command of static_functions) {
+                if (ss[command].name.startsWith("get_")) {
+                    Object.defineProperty(this, ss[command].name.replace("get_", ""), {
+                        get: withFirstArg(this, ss[command]),
+                        configurable: true
+                    });
+                }
+                else if (ss[command].name.startsWith("set_")) {
+                    Object.defineProperty(this, ss[command].name.replace("set_", ""), {
+                        set: withFirstArg(this, ss[command]),
+                        configurable: true,
+                        writable: true
+                    })
+                }
+                else {
+                    this[command] = withFirstArg(this, ss[command])
+                }
             }
         }
-        this.deck.shuffle()
+        
     }
 
-    // EMBEDS
+    //#region GAME MANAGEMENT COMMANDS
+    // /**
+    //  * @param {GameData} data The information to initialize the series with. (done at the very start of a series)
+    //  */
+    // async initialize(data) {
+    //     const {deck, players} = data
+    //     this.deck = new DrawPile({
+    //         game: this
+    //     })
+    //     this.deck.load(deck)
+    //     this.discard_piles = [
+    //         new DiscardPile({game: this}),
+    //         new DiscardPile({game: this}),
+    //         new DiscardPile({game: this}),
+    //         new DiscardPile({game: this})
+    //     ]
+    //     this.addPlayers(...players)
+    //     this.player_list.forEach(p => {
+    //         p.chocolate = 0
+    //     })
+    //     this.input_collector = this.channel.createMessageCollector({
+    //         filter: (m) => !m.author.bot
+    //     })
+    //     this.input_collector.on(`collect`, await this.process_input)
+    //     // console.log(`Game initialized with ${this.player_list.length} players.`)
+    // }
+    // /**
+    //  * Start a game.
+    //  */
+    // start() {
+    //     this.deck.shuffle()
+    //     for (let player of this.player_list) {
+    //         player.add(this.starting_cards)
+    //     }
+    //     for (let dpile of this.discard_piles) {
+    //         dpile.push(this.deck.deal())
+    //     }
+    //     this.channel.send({embeds: [this.display_embed(`start_game`)], components: [this.buttons()]})
+    //     this.button_collector = this.interaction.client.on("interactionCreate", this.process_button)
+    // }
+    //#endregion
+    //#region DECK COMMANDS
+    // /**
+    //  * Replenishes the deck with cards from the discard piles.
+    //  */
+    // replenish() {
+    //     for (let pile of this.discard_piles) {
+    //         while (pile.length > 1) {
+    //             this.deck.push(pile.shift())
+    //         }
+    //     }
+    //     this.deck.shuffle()
+    // }
+    //#endregion
+    //#region EMBEDS
     /**
      * 
      * @param {string} type The type of embed to display
@@ -152,8 +186,8 @@ module.exports = class Game {
         .setComponents(buttons)
         return default_action_row
     }
-
-    // PLAYER MANAGEMENT COMMANDS
+    //#endregion
+    //#region PLAYER MANAGEMENT COMMANDS
     /**
      * 
      * @param  {...User} players The players to add.
@@ -177,8 +211,8 @@ module.exports = class Game {
     get current_player() {
         return this.player_list[this.current_turn]
     }
-
-    // PROCESSING COMMANDS
+    //#endregion
+    //#region PROCESSING COMMANDS
     /**
      * Process the input of a message.
      * @param {Message} message The discord message to process.
@@ -188,9 +222,6 @@ module.exports = class Game {
         const player = this.player_list.findPlayer(author)
         if (!player) {
             // handle any audience things here
-            return
-        }
-        if (this.is_processing) {
             return
         }
         const parseInputType = (text) => {
@@ -204,11 +235,21 @@ module.exports = class Game {
             if (/^\d/.test(text)) {
                 return `play`
             }
+            if (/^j\d/.test(text)) {
+                return `jump`
+            }
             if (text.startsWith(`debug load`) ) {
                 return `debug load`
             }
             return false
         }
+        if (parseInputType(content) == `jump`) {
+            return this.jumpInHandler(message, player)
+        }
+        if (this.is_processing) {
+            return
+        }
+        
         // console.log(parseInputType(content))
         switch (parseInputType(content)) {
             case `play`:
@@ -218,7 +259,7 @@ module.exports = class Game {
                 this.drawHandler(message, player)
                 break
             case `close`:
-                this.input_collector.off(`connect`, await this.process_input)
+                this.input_collector.stop()
                 message.reply(`Game closed.`)
                 break
             case `debug load`:
@@ -249,6 +290,9 @@ module.exports = class Game {
         if (typeof effect == "function") {
             this.effect_queue.push(effect)
         }
+        else {
+            return
+        }
         if (this.is_processing) {
             return
         }
@@ -257,11 +301,104 @@ module.exports = class Game {
             await this.effect_queue[0](this, data)
             this.effect_queue.shift()
         }
-        console.log(`processing complete`)
+        this.eliminate_players_with_many_cards()
+        const winner = this.check_for_wins()
+        if (winner) {
+            await this.handle_win(winner)
+        }
         this.is_processing = false
     }
-
-    // HANDLERS
+    //#endregion
+    //#region WIN/LOSS CHECKS
+    /**
+     * Checks all players if they have more than 24 cards, and eliminates them if so.
+     */
+    eliminate_players_with_many_cards() {
+        for (const player_index in this.player_list) {
+            const player = this.player_list[player_index]
+            if (player.hand.length >= 25) {
+                this.eliminated_list.push(this.player_list.splice(player_index, 1)[0])
+                this.channel.send(`**⚠️ ${player.name} has been eliminated for hoarding.**`)
+            }
+        }
+    }
+    /**
+     * 
+     * @returns in this order:
+     * 
+     * null if there are no winners (???)
+     * 
+     * the player who won if there is 1 player left
+     * 
+     * the first player it finds who has 0 cards in their hand
+     * 
+     * the current player if there is a 4 match
+     * 
+     * the sudoku condition win
+     */
+    check_for_wins() {
+        if (this.player_list.length < 1) {
+            return null
+        }
+        if (this.player_list.length == 1) {
+            return {win_reason: "elimination", player: this.player_list[0]}
+        }
+        const zero_cards = this.player_list.find(p => p.hand.length == 0)
+        if (zero_cards) {
+            return {win_reason: "0 cards", player: zero_cards}
+        }
+        const matching_values = (card_args, check) => {
+            let is_matching = true
+            const first_value = card_args[0][check]
+            for (const a of card_args) {
+                is_matching &&= a[check] == first_value
+            }
+            return is_matching
+        }
+        const top_cards = this.discard_piles.map(d => d.top_card)
+        const is_matching = matching_values(top_cards, "color") || matching_values(top_cards, "icon")
+        if (is_matching) {
+            return {win_reason: "matching cards", player: this.current_player}
+        }
+        const sudoku_values = top_cards.map(c => parseInt(c.icon))
+        if (!sudoku_values.some(value => isNaN(value))) {
+            const pile_1_check = sudoku_values[0] == sudoku_values[1] + sudoku_values[2] + sudoku_values[3]
+            const pile_4_check = sudoku_values[3] == sudoku_values[1] + sudoku_values[2] + sudoku_values[0]
+            const sudoku_check = (args) => {
+                return args[0].color == args[1].color || args[0].icon == args[1].icon
+            }
+            const chain1 = sudoku_check(top_cards.slice(0, 2))
+            const chain2 = sudoku_check(top_cards.slice(1, 3))
+            const chain3 = sudoku_check(top_cards.slice(2, 4))
+            if ((pile_1_check && chain2 && chain3) || (pile_4_check && chain1 && chain2)) {
+                return {win_reason: "sudoku", player: this.current_player}
+            }
+        }
+        return false
+    }
+    async handle_win(winner) {
+        let win_reason = ''
+        switch(winner.win_reason) {
+            case "elimination":
+                win_reason = "All other players were eliminated."
+                break
+            case "0 cards":
+                win_reason = `${winner.player.name} ran out of cards.`
+                break
+            case "matching cards":
+                win_reason = 'All the pile\'s cards match in color or number.'
+                break
+            case "sudoku":
+                win_reason = "All piles' cards sum up to either the first or last pile, and all other piles can be linked through either icon or color (literally how did you do this)."
+                break
+        }
+        this.winner = winner.player
+        this.channel.send(`# 🎉 ${winner.player.name} has won! 🎉\n${win_reason} Enjoy some fresh chocolate! 🍫`)
+        this.input_collector.off(`collect`, await this.process_input)
+        this.interaction.client.off("interactionCreate", this.process_button)
+    }
+    //#endregion
+    //#region INPUT HANDLERS
     async cardInputHandler(message, player) {
         if (this.is_processing) {
             return
@@ -269,7 +406,7 @@ module.exports = class Game {
         const {author, content, channel} = message
         const pre_effect_current_turn = this.current_turn
         const play_object = player.hand.parse(content)
-        if (play_object["card_index"] == undefined) {
+        if (play_object["dish"] == undefined) {
             // console.log(play_object)
             return message.reply(`Invalid input! Make sure to include the dish.`)
         }
@@ -288,7 +425,6 @@ module.exports = class Game {
         else {
             is_valid ||= card.color == discard_pile.top_card.color || card.icon == discard_pile.top_card.icon
             is_valid ||= card.wild
-            is_valid ||= discard_pile.top_card.wild
             if (card.stack_on) {
                 is_valid ||= card.stack_on.includes(discard_pile.top_card.icon)
             }
@@ -300,13 +436,33 @@ module.exports = class Game {
         if (!is_valid) {
             return await message.reply(`You can't play that card there!`)
         }
-        if (typeof card.customDiscardBehavior == 'function') {
-            card.customDiscardBehavior({message, game: this})
+        await this.process(card.preDiscardBehavior, {message, play_object})
+        discard_pile.push(player.hand.splice(play_object["card_index"], 1)[0])
+        await this.process(card.postDiscardBehavior, {message, play_object})
+        if (card.wild) {
+            if (!card.overrideWildBehavior) {
+                const color_collector = new InputCollector(this, "color", this.current_player)
+                const wild_color_collected = await color_collector.getResponse("Choose a color to set the wild card to!", "Invalid color. Choose from one of the 10 colors available.")
+                if (wild_color_collected) {
+                    card.color = wild_color_collected
+                    card.wild = false
+                    this.channel.send(`Color set to ${CardColors[card.color]}.`)
+                }
+                else {
+                    card.color = discard_pile[discard_pile.length - 2].color
+                    card.wild = false
+                    this.channel.send(`Response timed out, defaulting to ${CardColors[card.color]}.`)
+                }
+            }
+            else {
+                await this.process(card.overrideWildBehavior, {message, play_object})
+            }
         }
-        else {
-            discard_pile.push(player.hand.splice(play_object["card_index"], 1)[0])
-        }
+        
         await this.process(card.effect, {message, play_object})
+        if (this.winner) {
+            return
+        }
         let play_text = `${player.name} played a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
         if (card.dontStep) {
             if (pre_effect_current_turn == this.current_turn) {
@@ -348,6 +504,34 @@ module.exports = class Game {
             this.display_embed(`play_card`, {text: play_text})
         ],
         components: [this.buttons()]})
+    }
+    async jumpInHandler(message, player) {
+        const {author, content, channel} = message
+        // const pre_effect_current_turn = this.current_turn
+        const play_object = player.hand.parse(content.slice(1))
+        if (play_object["dish"] == undefined) {
+            // console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the dish.`)
+        }
+        if (play_object["card_index"] == undefined || isNaN(play_object["card_index"])) {
+            // console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the card index.`)
+        }
+        const discard_pile = this.discard_piles[play_object["dish"]]
+        const card = player.hand[play_object["card_index"]]
+        // default check
+        let is_valid = card.color == discard_pile.top_card.color && card.icon == discard_pile.top_card.icon
+        if (!is_valid) {
+            return await message.reply(`You can't play that card there! Jump-ins must match both color and symbol.`)
+        }
+        else {
+            discard_pile.push(player.hand.splice(play_object["card_index"], 1)[0])
+        }
+        let play_text = `${player.name} jumped in with a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
+        const components = this.is_processing ? [] : [this.buttons()]
+        await channel.send({ 
+            embeds: [this.display_embed(`play_card`, {text: play_text})],
+            components})
     }
     /**
      * Process a button interaction.
@@ -396,7 +580,8 @@ module.exports = class Game {
         }
         
     }
-    // GAMEPLAY COMMANDS
+    //#endregion
+    //#region GAMEPLAY COMMANDS
     /**
      * Moves to the next player.
      */
@@ -450,5 +635,7 @@ module.exports = class Game {
             p.hand.flip()
         }
     }
-    // DEBUG
+    //#endregion
+    //#region DEBUG
+    //#endregion
 }

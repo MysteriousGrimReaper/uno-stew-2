@@ -39,7 +39,7 @@ module.exports = {
 			player_list = [
 				await client.users.fetch("315495597874610178"),
 				await client.users.fetch("224214982756270082"),
-				await client.users.fetch("1014413186017021952")
+				//await client.users.fetch("1014413186017021952")
 			]
 		}
 		else {
@@ -56,11 +56,11 @@ module.exports = {
             const game = new Game({
                 interaction
             })
-            game.initialize({
+            await game.initialize({
                 players: player_list,
                 deck
             })
-            game.start()
+            await game.start()
 			interaction.client.on(`messageCreate`, (message) => {
 				if (message.content.toLowerCase() == `close` && message.channel.id == channel.id) {
 					currently_playing_channels.splice(currently_playing_channels.indexOf(channel.id), 1)
