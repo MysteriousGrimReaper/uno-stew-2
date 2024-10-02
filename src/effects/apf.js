@@ -24,9 +24,14 @@ module.exports = {
             "2": "draw 2"
         }
         const parser = (input) => {
+            const values = Object.values(inputs)
+            const input_lower = input.toLowerCase()
             for (const key in Object.keys(inputs)) {
-                if (input.toLowerCase().startsWith(key)) {
+                if (input_lower.startsWith(key)) {
                     return inputs[key]
+                }
+                else if (values.includes(input_lower)) {
+                    return input_lower
                 }
             }
             return false
@@ -35,9 +40,18 @@ module.exports = {
         const collector = new InputCollector(game, parser, game.current_player)
         effect = await collector.getResponse("Choose an effect to perform! (skip, reverse, draw 2)", "Invalid entry.")
         if (effect) {
+            let effect_to_do
             switch(effect) {
-                
+                case `skip`:
+                    effect_to_do = require("./sk").effect
+                    break
+                case `reverse`:
+                    effect_to_do = require("./re").effect
+                    break
+                case `draw 2`:
+                    effect_to_do = require("./+2").effect
             }
+            await effect_to_do(game, data)
         }
         else {
             return game.channel.send("Response timed out.")
