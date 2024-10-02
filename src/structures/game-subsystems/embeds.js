@@ -1,6 +1,6 @@
 const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = require("discord.js")
 
-class GameDisplayEmbeds {
+module.exports = class GameDisplayEmbeds {
     /**
      * 
      * @param {string} type The type of embed to display
@@ -58,4 +58,3 @@ class GameDisplayEmbeds {
         return default_action_row
     }
 }
-module.exports = GameDisplayEmbeds

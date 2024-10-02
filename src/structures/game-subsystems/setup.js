@@ -1,7 +1,7 @@
 const DiscardPile = require("../discardpile")
 const DrawPile = require("../drawpile")
 
-class Setup {
+module.exports = class GameSetup {
     /**
      * @param {GameData} data The information to initialize the series with. (done at the very start of a series)
      */
@@ -41,4 +41,3 @@ class Setup {
         game.button_collector = game.interaction.client.on("interactionCreate", game.process_button)
     }
 }
-module.exports = Setup
