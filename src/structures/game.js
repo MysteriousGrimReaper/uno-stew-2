@@ -34,6 +34,7 @@ module.exports = class Game {
         this.last_pile = 0
         this.play_direction = 1
         this.winner = false
+        this.inactive_discard_pile = Math.floor(Math.random() * 4)
         if (!this.interaction) {
             console.warn(`No interaction set for the game!`)
         }

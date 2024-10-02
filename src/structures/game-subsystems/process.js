@@ -88,10 +88,6 @@ module.exports = class CommandProcessor {
             game.effect_queue.shift()
         }
         game.eliminate_players_with_many_cards()
-        const winner = game.check_for_wins()
-        if (winner) {
-            await game.handle_win(winner)
-        }
         game.is_processing = false
     }
 }

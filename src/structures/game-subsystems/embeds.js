@@ -14,10 +14,11 @@ module.exports = class GameDisplayEmbeds {
         let current_top_cards_text = `The current top cards are:\n${
             game.discard_piles.map(pile => {
                 return pile.top_card.display_text()})
-            .map((card_text, index) => `${index != game.draw_stack_pile && game.draw_stack_pile != -1 ? `🚫 ` : `` }Dish ${index + 1}: **${card_text}**`)
+            .map((card_text, index) => `${game.pile_invalid(index) ? `🚫 ` : `` }Dish ${index + 1}: **${card_text}**`)
             .join(`\n`)
         }`
         const embed = game.default_embed
+        embed.footer = {text: `Current player: ${game.current_player.name}`, iconURL: game.current_player.user.avatarURL()}
         switch (type) {
             case `start_game`: 
                 embed.description = `A new UNO Stew match has started! ${current_top_cards_text}`

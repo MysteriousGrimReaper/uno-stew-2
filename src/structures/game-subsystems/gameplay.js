@@ -2,9 +2,12 @@ module.exports = class Gameplay {
     /**
      * Moves to the next player.
      */
-    static step(game) {
+    static step(game, options = {}) {
         game.current_turn += game.play_direction + game.player_list.length
         game.current_turn %= game.player_list.length
+        if (options.move_inactive_discard_pile) {
+            game.deactivate_next_discard_pile()
+        }
     }
     /**
      * Reverses the turn order.
@@ -29,7 +32,7 @@ module.exports = class Gameplay {
     static draw(game, count, player = game.current_player, move = true) {
         player.add(count)
         if (move) {
-            game.step()
+            game.step({move_inactive_discard_pile: true})
         }
         return count
     }
@@ -51,5 +54,9 @@ module.exports = class Gameplay {
         for (const p in game.player_list) {
             p.hand.flip()
         }
+    }
+    static deactivate_next_discard_pile(game) {
+        game.inactive_discard_pile++
+        game.inactive_discard_pile %= 4
     }
 }

@@ -25,7 +25,7 @@ module.exports = class WinLossHandler {
      * 
      * the sudoku condition win
      */
-    static check_for_wins(game) {
+    static check_for_wins(game, pre_effect_current_turn) {
         if (game.player_list.length < 1) {
             return null
         }
@@ -47,7 +47,7 @@ module.exports = class WinLossHandler {
         const top_cards = game.discard_piles.map(d => d.top_card)
         const is_matching = matching_values(top_cards, "color") || matching_values(top_cards, "icon")
         if (is_matching) {
-            return {win_reason: "matching cards", player: game.current_player}
+            return {win_reason: "matching cards", player: game.player_list[pre_effect_current_turn]}
         }
         const sudoku_values = top_cards.map(c => parseInt(c.icon))
         if (!sudoku_values.some(value => isNaN(value))) {
@@ -60,7 +60,7 @@ module.exports = class WinLossHandler {
             const chain2 = sudoku_check(top_cards.slice(1, 3))
             const chain3 = sudoku_check(top_cards.slice(2, 4))
             if ((pile_1_check && chain2 && chain3) || (pile_4_check && chain1 && chain2)) {
-                return {win_reason: "sudoku", player: game.current_player}
+                return {win_reason: "sudoku", player: game.player_list[pre_effect_current_turn]}
             }
         }
         return false

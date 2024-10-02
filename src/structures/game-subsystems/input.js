@@ -1,6 +1,8 @@
 const path = require("path")
 const fs = require("fs")
 const { EmbedBuilder } = require("discord.js")
+const InputCollector = require("../../discord-utils/input_collector")
+const { CardColors } = require("../card")
 module.exports = class InputHandler {
     static async cardInputHandler(game, message, player) {
         if (game.is_processing) {
@@ -31,10 +33,7 @@ module.exports = class InputHandler {
             if (card.stack_on) {
                 is_valid ||= card.stack_on.includes(discard_pile.top_card.icon)
             }
-        }
-        if (game.draw_stack > 0) {
-            console.log(card.draw_stackable)
-            is_valid &&= card.draw_stackable
+            is_valid &&= !game.pile_invalid(play_object["dish"])
         }
         if (!is_valid) {
             return await message.reply(`You can't play that card there!`)
@@ -63,20 +62,21 @@ module.exports = class InputHandler {
         }
         
         await game.process(card.effect, {message, play_object})
+        const winner = game.check_for_wins()
+        if (winner) {
+            await game.handle_win(winner, pre_effect_current_turn)
+        }
         if (game.winner) {
             return
         }
         let play_text = `${player.name} played a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
-        if (card.dontStep) {
-            if (pre_effect_current_turn == game.current_turn) {
-                play_text += ` ${player.name} takes another turn!`
-            }
-            else {
-                play_text += ` It's now ${game.player_list[game.current_turn].name}'s turn!`
-            }
+        if (!card.dontStep) {
+            game.step({move_inactive_discard_pile: true})
+        }
+        if (pre_effect_current_turn == game.current_turn) {
+            play_text += ` ${player.name} takes another turn!`
         }
         else {
-            game.step()
             play_text += ` It's now ${game.player_list[game.current_turn].name}'s turn!`
         }
         if (game.draw_stack > 0) {
@@ -136,6 +136,35 @@ module.exports = class InputHandler {
             embeds: [game.display_embed(`play_card`, {text: play_text})],
             components})
     }
+    static async sumHandler(game, message, player) {
+        const {author, content, channel} = message
+        // const pre_effect_current_turn = game.current_turn
+        const play_object = player.hand.parse(content.slice(1))
+        if (play_object["dish"] == undefined) {
+            // console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the dish.`)
+        }
+        if (play_object["card_index"] == undefined || isNaN(play_object["card_index"])) {
+            // console.log(play_object)
+            return message.reply(`Invalid input! Make sure to include the card index.`)
+        }
+        const discard_pile = game.discard_piles[play_object["dish"]]
+        const card = player.hand[play_object["card_index"]]
+        // default check
+        let is_valid = card.color == discard_pile.top_card.color && card.icon == discard_pile.top_card.icon
+        if (!is_valid) {
+            return await message.reply(`You can't play that card there! Jump-ins must match both color and symbol.`)
+        }
+        else {
+            discard_pile.push(player.hand.splice(play_object["card_index"], 1)[0])
+        }
+        let play_text = `${player.name} jumped in with a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
+        const components = game.is_processing ? [] : [game.buttons()]
+        await channel.send({ 
+            embeds: [game.display_embed(`play_card`, {text: play_text})],
+            components})
+    }
+    
     /**
      * Process a button interaction.
      * @param {ButtonInteraction} button_interaction 
