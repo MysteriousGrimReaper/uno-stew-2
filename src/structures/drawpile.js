@@ -4,7 +4,7 @@ const { CardFace, Card } = require("./card")
 module.exports = class DrawPile extends Array {
     constructor(data) {
         super()
-        Object.assign(data)
+        Object.assign(this, data)
     }
     load(deck) {
         const deck_string = fs.readFileSync(path.join(__dirname, `../decks`, deck + `.csv`),

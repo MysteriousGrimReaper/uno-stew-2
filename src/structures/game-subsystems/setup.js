@@ -8,14 +8,14 @@ module.exports = class GameSetup {
     static async initialize(game, data) {
         const {deck, players} = data
         game.deck = new DrawPile({
-            game: game
+            game
         })
         game.deck.load(deck)
         game.discard_piles = [
-            new DiscardPile({game: game}),
-            new DiscardPile({game: game}),
-            new DiscardPile({game: game}),
-            new DiscardPile({game: game})
+            new DiscardPile({game}),
+            new DiscardPile({game}),
+            new DiscardPile({game}),
+            new DiscardPile({game})
         ]
         game.addPlayers(...players)
         game.player_list.forEach(p => {

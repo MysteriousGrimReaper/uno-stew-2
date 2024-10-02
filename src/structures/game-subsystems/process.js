@@ -87,7 +87,13 @@ module.exports = class CommandProcessor {
             await game.effect_queue[0](game, data)
             game.effect_queue.shift()
         }
-        game.eliminate_players_with_many_cards()
         game.is_processing = false
+    }
+    static moderate_jelly(game) {
+        for (const dp of game.discard_piles) {
+            if (dp.top_card.color == "j") {
+                dp.top_card.color = dp[dp.length - 2].color
+            }
+        }
     }
 }

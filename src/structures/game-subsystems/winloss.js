@@ -1,3 +1,5 @@
+const {match_win} = require("../../../config.json")
+
 module.exports = class WinLossHandler {
     /**
      * Checks all players if they have more than 24 cards, and eliminates them if so.
@@ -7,7 +9,7 @@ module.exports = class WinLossHandler {
             const player = game.player_list[player_index]
             if (player.hand.length >= 25) {
                 game.eliminated_list.push(game.player_list.splice(player_index, 1)[0])
-                game.channel.send(`**⚠️ ${player.name} has been eliminated for hoarding.**`)
+                game.channel.send(`**⚠️ ${player.name} has been eliminated for hoarding too many cards.**`)
             }
         }
     }
@@ -46,7 +48,7 @@ module.exports = class WinLossHandler {
         }
         const top_cards = game.discard_piles.map(d => d.top_card)
         const is_matching = matching_values(top_cards, "color") || matching_values(top_cards, "icon")
-        if (is_matching) {
+        if (is_matching && match_win) {
             return {win_reason: "matching cards", player: game.player_list[pre_effect_current_turn]}
         }
         const sudoku_values = top_cards.map(c => parseInt(c.icon))
@@ -82,6 +84,7 @@ module.exports = class WinLossHandler {
                 break
         }
         game.winner = winner.player
+        console.log(`win reason: ${win_reason}`)
         game.channel.send(`# 🎉 ${winner.player.name} has won! 🎉\n${win_reason} Enjoy some fresh chocolate! 🍫`)
         game.input_collector.off(`collect`, await game.process_input)
         game.interaction.client.off("interactionCreate", game.process_button)

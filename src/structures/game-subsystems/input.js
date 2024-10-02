@@ -15,6 +15,9 @@ module.exports = class InputHandler {
             // console.log(play_object)
             return message.reply(`Invalid input! Make sure to include the dish.`)
         }
+        if (play_object["dish"] >= 4) {
+            return message.reply(`Dish index too high! Choose a dish from 1 to 4.`)
+        }
         if (play_object["card_index"] == undefined || isNaN(play_object["card_index"])) {
             // console.log(play_object)
             return message.reply(`Invalid input! Make sure to include the card index.`)
@@ -24,12 +27,13 @@ module.exports = class InputHandler {
         const card = player.hand[play_object["card_index"]]
         // custom check
         if (typeof card.customCheck == 'function') {
-            is_valid ||= card.customCheck({message, game: game})
+            console.log(`custom check recognized`)
+            is_valid ||= card.customCheck({message, game: game, play_object})
         }
         // default check
         else {
             is_valid ||= card.color == discard_pile.top_card.color || card.icon == discard_pile.top_card.icon
-            is_valid ||= card.wild
+            is_valid ||= card.wild || card.color == "j"
             if (card.stack_on) {
                 is_valid ||= card.stack_on.includes(discard_pile.top_card.icon)
             }
@@ -62,11 +66,7 @@ module.exports = class InputHandler {
         }
         
         await game.process(card.effect, {message, play_object})
-        const winner = game.check_for_wins()
-        if (winner) {
-            await game.handle_win(winner, pre_effect_current_turn)
-        }
-        if (game.winner) {
+        if (await game.end_turn(pre_effect_current_turn) == null) {
             return
         }
         let play_text = `${player.name} played a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
@@ -83,6 +83,7 @@ module.exports = class InputHandler {
             play_text += `\n\n⚠️ **A draw card was played against you!** Play a draw card of +${game.draw_stack_min} or greater to pass it, or type \`d\` to draw **${game.draw_stack}** cards.`
         }
         game.last_pile = play_object["dish"]
+        game.moderate_jelly()
         await channel.send({ 
             embeds: [game.display_embed(`play_card`, {text: play_text})],
             components: [game.buttons()]})
@@ -103,6 +104,10 @@ module.exports = class InputHandler {
             play_text += `${player.name} drew a card. `
         }
         play_text += `It's now ${game.current_player.name}'s turn!`
+        game.eliminate_players_with_many_cards()
+        if (await game.end_turn() == null) {
+            return
+        }
         return await channel.send({embeds: [
             game.display_embed(`play_card`, {text: play_text})
         ],

@@ -14,6 +14,7 @@ class CardColors {
     static s = `Silver`
     static a = `Amber`
     static i = `Ivory`
+    static j = `Jelly`
 }
 // all card types
 class CardFace {
@@ -27,6 +28,7 @@ class CardFace {
     static s = 0x999999
     static a = 0x993300
     static i = 0xdddddd
+    static j = 0xeeeeee
     constructor(card_data) {
         this.extra_text = ``
         this.draw_stackable = false

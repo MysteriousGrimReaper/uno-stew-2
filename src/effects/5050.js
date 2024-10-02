@@ -14,7 +14,7 @@ module.exports = {
      */
     async effect(game, data) {
         const player = game.player_list.findPlayer(data.message.author.id)
-        if (game.draw_stack_min > draw_count) return game.channel.send(`You can't play that card, it's not powerful enough!`)
+        
         if (game.draw_stack_pile >= 0 && data?.play_object?.dish != game.draw_stack_pile) {
             return game.channel.send(`To continue the stack, you must play on the same dish. (${game.draw_stack_pile})`)
         }
