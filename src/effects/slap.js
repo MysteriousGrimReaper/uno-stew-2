@@ -19,7 +19,7 @@ module.exports = {
                 collected_users.push(r)
             }
         })
-        await waitUntil(() => collected_users.length >= (game.player_list.length - 1))
+        await waitUntil(() => collected_users.length >= (game.player_list.length - 1), {timeout: 15000})
         const user_ids = collected_users.map(u => u.id)
         if (collected_users.length == game.player_list.length) {
             const card_drawer = game.findPlayer(collected_users[collected_users.length - 1].id)
