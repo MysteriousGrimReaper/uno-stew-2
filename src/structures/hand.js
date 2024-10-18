@@ -1,10 +1,17 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js")
-const { Card } = require("./card")
-
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require("discord.js")
+const { Card, CardFace } = require("./card")
+const {createCanvas, loadImage, registerFont } = require("canvas")
+const cell_length = 200
+const border = 20
+const border_color = "white"
+const canvas = createCanvas(cell_length * 5 + border * 6, cell_length * 5 + border * 6)
+const ctx = canvas.getContext('2d')
+registerFont("./Archivo-SemiBold.ttf", { family: "Archivo" });
 module.exports = class Hand extends Array {
     constructor(data) {
         super()
         Object.assign(this, data)
+        this.use_image = true // set this back to false later
     }
     /**
      * 
@@ -71,6 +78,71 @@ module.exports = class Hand extends Array {
         .setDescription(this.text())
         .setTitle(`Hand (${this.length}/25)`)
         .setFooter({text: `Type any card's number to play it. | ${`🍕`.repeat(this.player.pizza)}${`🍿`.repeat(this.player.popcorn)}`})
+    }
+    /**
+     * @returns What the game will send.
+     */
+    display() {
+        const message_object = {ephemeral: true, components: this.buttons()}
+        message_object.embeds = [this.embed()]
+        if (this.use_image) {
+            const attachment = new AttachmentBuilder(this.image(), { name: 'canvas-image.png' });
+            message_object.files = [attachment]
+            message_object.embeds = [this.embed()
+                .setDescription(` `)
+                .setImage('attachment://canvas-image.png')
+            ]
+        }
+        
+        return message_object
+    }
+    /**
+     * @returns The hand's image.
+     */
+    image(strike = () => false) {
+        ctx.fillStyle = border_color
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                const card = this[j * 5 + i]
+
+                if (card) {
+                    ctx.fillStyle = `#${CardFace[card.color].toString(16).padStart(6, '0')}`
+                }
+                else {
+                    ctx.fillStyle = "#222222"
+                }
+                const top_left_corner = [i * cell_length + (i+1) * border, j * cell_length + (j+1) * border]
+                ctx.fillRect(...top_left_corner, cell_length, cell_length)
+                
+                if (card) {
+                    if (card.color === `j`) {
+                        ctx.fillStyle = `white`
+                        const clear_lines = 3
+                        const base_offset = cell_length / clear_lines
+                        for (let k = 0; k < clear_lines; k++) {
+                            const vertices = [
+                                [top_left_corner[0], top_left_corner[1] + k * base_offset],
+                                [top_left_corner[0] + k * base_offset, top_left_corner[1]],
+                                [top_left_corner[0] + (k+0.5) * base_offset, top_left_corner[1]],
+                                [top_left_corner[0], top_left_corner[1] + (k+0.5) * base_offset]
+                            ]
+                            ctx.beginPath()
+                            ctx.moveTo(...vertices[0])
+                            ctx.lineTo(...vertices[1])
+                            ctx.lineTo(...vertices[2])
+                            ctx.lineTo(...vertices[3])
+                            ctx.lineTo(...vertices[0])
+                            ctx.fill()
+                        }
+                    }
+                    ctx.fillStyle = "black"
+                    ctx.font = "50px Archivo"
+                    ctx.fillText(card.display_name, (i + 0.1) * cell_length + (i+1) * border, (j + 0.3) * cell_length + (j+1) * border)
+                }
+            }
+        }
+        return canvas.toBuffer('image/png')
     }
     /**
      * 

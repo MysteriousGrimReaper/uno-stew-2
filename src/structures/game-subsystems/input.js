@@ -84,7 +84,7 @@ module.exports = class InputHandler {
         }
         game.last_pile = play_object["dish"]
         game.moderate_jelly()
-        await channel.send({ 
+        game.recent_play_message = await channel.send({ 
             embeds: [game.display_embed(`play_card`, {text: play_text})],
             components: [game.buttons()]})
     }
@@ -108,7 +108,7 @@ module.exports = class InputHandler {
         if (await game.end_turn() == null) {
             return
         }
-        return await channel.send({embeds: [
+        game.recent_play_message = await channel.send({embeds: [
             game.display_embed(`play_card`, {text: play_text})
         ],
         components: [game.buttons()]})
@@ -137,9 +137,16 @@ module.exports = class InputHandler {
         }
         let play_text = `${player.name} jumped in with a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
         const components = game.is_processing ? [] : [game.buttons()]
-        await channel.send({ 
-            embeds: [game.display_embed(`play_card`, {text: play_text})],
-            components})
+        if (!game.recent_play_message) {
+            await channel.send({ 
+                embeds: [game.display_embed(`play_card`, {text: play_text})],
+                components})
+        }
+        else {
+            await game.recent_play_message.edit({ 
+                embeds: [game.display_embed(`play_card`, {text: play_text})],
+                components})
+        }
     }
     static async sumHandler(game, message, player) {
         const {author, content, channel} = message
@@ -188,7 +195,7 @@ module.exports = class InputHandler {
                 if (!player) {
                     return button_interaction.reply({ephemeral: true, content: `You're not in game game!`})
                 }
-                button_interaction.reply({ephemeral: true, embeds: [player.hand.embed()], components: player.hand.buttons()}) // replace with: content: player.hand.text()
+                button_interaction.reply(player.hand.display()) // replace with: content: player.hand.text()
                 break
             case `table`:
                 button_interaction.reply({ephemeral: true, embeds: [game.display_embed(`table`)], components: [game.buttons()]})
