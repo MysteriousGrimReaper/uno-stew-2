@@ -99,7 +99,7 @@ module.exports = {
                 }
                 return game.channel.send(draw_text)
             }
-            game.draw(4, coin[1 - coin_state_value])
+            await game.draw(4, coin[1 - coin_state_value])
             game.step()
             return game.channel.send(`${draw_text} ${coin[1 - coin_state_value].name} drew 4 cards.`)
         }

@@ -1,6 +1,6 @@
 const Game = require("../structures/game")
 module.exports = {
-    display_name: `+[1,6]`,
+    display_name: `Mystery Mealbox`,
     emoji: `<:draw_2:1276447672726978642>`,
     description: `Make the next player draw 1-6 cards.`, draw_stackable: true,
     /**

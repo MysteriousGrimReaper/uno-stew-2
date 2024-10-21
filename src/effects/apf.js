@@ -51,6 +51,9 @@ module.exports = {
                 case `draw 2`:
                     effect_to_do = require("./+2").effect
             }
+            if (typeof effect_to_do != "function") {
+                return console.error("apf.js: Effect not received in effect_to_do")
+            }
             await effect_to_do(game, data)
         }
         else {

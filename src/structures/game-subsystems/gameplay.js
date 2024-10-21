@@ -29,10 +29,13 @@ module.exports = class Gameplay {
      * @param {boolean} move Whether or not to move on after drawing
      * @returns 
      */
-    static draw(game, count, player = game.current_player, move = true) {
-        player.add(count)
+    static async draw(game, count, player = game.current_player, move = true) {
+        const cards = player.add(count)
         if (move) {
             game.step({move_inactive_discard_pile: true})
+        }
+        for (const card of cards) {
+            await game.process(card.onDraw, {player, card, cards, count, move})
         }
         return count
     }

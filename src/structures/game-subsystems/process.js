@@ -72,7 +72,10 @@ module.exports = class CommandProcessor {
      * @param message - the Discord message
      * @param play_object - the play object (includes card index, dish)
      */
-    static async process(game, effect, data) {
+    static async process(game, effect, data = {}) {
+        if (!effect) {
+            return
+        }
         if (typeof effect == "function") {
             game.effect_queue.push(effect)
         }

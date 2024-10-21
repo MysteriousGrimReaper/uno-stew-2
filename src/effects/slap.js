@@ -23,13 +23,14 @@ module.exports = {
         const user_ids = collected_users.map(u => u.id)
         if (collected_users.length == game.player_list.length) {
             const card_drawer = game.findPlayer(collected_users[collected_users.length - 1].id)
-            game.draw(4, card_drawer, false)
+            await game.draw(4, card_drawer, false)
             await game.channel.send(`${card_drawer.name} drew 4 cards!`)
         }
         else {
-            const card_drawer = game.player_list.filter(p => !user_ids.includes(p.user.id))[0]
-            game.draw(4, card_drawer, false)
-            await game.channel.send(`${card_drawer.name} drew 4 cards!`)
+            for (const card_drawer of game.player_list.filter(p => !user_ids.includes(p.user.id))) {
+                await game.draw(4, card_drawer, false)
+                await game.channel.send(`${card_drawer.name} drew 4 cards!`)
+            }
         }
     }
 }

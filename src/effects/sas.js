@@ -14,7 +14,7 @@ module.exports = {
         const player_to_steal_from = await collector.getResponse(`Choose a player to steal from!`, `Invalid player!`)
         if (player_to_steal_from) {
             if (player_to_steal_from.pizza <= 0) {
-                game.draw(3, player_to_steal_from)
+                await game.draw(3, player_to_steal_from)
                 return game.channel.send(`${player_to_steal_from.name} had no pizza. Draw 3 cards instead.`)
             }
             player_to_steal_from.pizza--

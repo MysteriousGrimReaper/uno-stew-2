@@ -19,13 +19,13 @@ module.exports = {
         if (color) {
             while (game.deck[game.deck.length - 1].color != color) {
                 total_cards++
-                game.draw(1, game.current_player, false)
+                await game.draw(1, game.current_player, false)
                 if (game.deck.length == 1) {
                     break
                 }
             }
             total_cards++
-            game.draw(1, game.current_player, false)
+            await game.draw(1, game.current_player, false)
             return game.channel.send(`${game.current_player.name} drew **${total_cards}** cards!`)
         }
         else {

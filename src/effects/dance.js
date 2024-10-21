@@ -87,7 +87,7 @@ module.exports = {
         if (0.75 / (game.player_list.length - 1) <= score / dance_array.length) {
             return await game.channel.send(`${game.current_player.name}'s dance was superb, and won't pick up any cards.`)
         }
-        game.draw(3, game.current_player)
+        await game.draw(3, game.current_player)
         return await game.channel.send(`${game.current_player.name} couldn't bust out the moves... +3 cards`)
     }
 }

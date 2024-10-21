@@ -36,9 +36,13 @@ module.exports = class Player {
      * Draw cards without skipping a turn.
      */
     add(count = 1) {
+        const added_cards = []
         for (let i = 0; i < count; i++) {
-            this.hand.push(this.game.deck.deal())
+            const drawn_card = this.game.deck.deal()
+            this.hand.push(drawn_card)
+            added_cards.push(drawn_card)
         }
+        return added_cards
     }
     
     get name() {

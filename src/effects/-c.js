@@ -4,8 +4,8 @@ const Game = require("../structures/game")
 const Hand = require("../structures/hand")
 const { Card, CardFace } = require("../structures/card")
 module.exports = {
-    display_name: "Discard Color",
-    emoji: "🧼",
+    display_name: "Juicer",
+    emoji: "🧃",
     description: "Discard all cards in your hand that match the color of this card.",
     /**
      *

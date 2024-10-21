@@ -10,7 +10,7 @@ module.exports = {
      */
     async effect(game, data) {
         for (const player of game.player_list) {
-            game.draw(2, player, false)
+            await game.draw(2, player, false)
         }
         return game.channel.send(`Everyone drew 2 cards!`)
     }

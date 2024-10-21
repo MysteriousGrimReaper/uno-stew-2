@@ -96,11 +96,11 @@ module.exports = class InputHandler {
         let play_text = ``
         if (game.draw_stack > 0) {
             const draw_count = game.resetDrawStack()
-            game.draw(draw_count, player)
+            await game.draw(draw_count, player)
             play_text += `${player.name} drew **${draw_count}** cards. `
         }
         else {
-            game.draw(1, player)
+            await game.draw(1, player)
             play_text += `${player.name} drew a card. `
         }
         play_text += `It's now ${game.current_player.name}'s turn!`

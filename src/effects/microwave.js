@@ -10,7 +10,7 @@ module.exports = {
      */
     async effect(game, data) {
         for (const player of game.player_list) {
-            game.draw(Math.ceil(Math.random() * 4), player, false)
+            await game.draw(Math.ceil(Math.random() * 4), player, false)
         }
         return game.channel.send(`Everyone drew some cards!`)
     }

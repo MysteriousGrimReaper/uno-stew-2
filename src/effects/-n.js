@@ -4,9 +4,9 @@ const Game = require("../structures/game")
 const Hand = require("../structures/hand")
 const { Card, CardFace } = require("../structures/card")
 module.exports = {
-    display_name: "Slice & Dice",
-    emoji: "🔪",
-    description: "Discard all except two cards in your hand.",
+    display_name: "Blender",
+    emoji: "🧋",
+    description: "Choose a number. Discard all cards in your hand of that number.",
     /**
      *
      * @param {Game} game

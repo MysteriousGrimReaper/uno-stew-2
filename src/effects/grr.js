@@ -12,7 +12,7 @@ module.exports = {
     effect(game, data) {
         for (const i in game.player_list) {
             if (i != game.current_turn) {
-                game.draw(Math.ceil(Math.random() * 6), game.player_list[i], false)
+                await game.draw(Math.ceil(Math.random() * 6), game.player_list[i], false)
             }
         }
         return game.channel.send(`Groceries incoming! Everyone else must draw some cards.`)
