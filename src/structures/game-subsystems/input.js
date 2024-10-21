@@ -8,6 +8,7 @@ module.exports = class InputHandler {
         if (game.is_processing) {
             return
         }
+        console.log(`handling card input`)
         const {author, content, channel} = message
         const pre_effect_current_turn = game.current_turn
         const play_object = player.hand.parse(content)
@@ -25,6 +26,10 @@ module.exports = class InputHandler {
         const discard_pile = game.discard_piles[play_object["dish"]]
         let is_valid = false
         const card = player.hand[play_object["card_index"]]
+        // check if out of turn
+        if (!card.canPlayOutOfTurn && player.id != game.player_list[game.current_turn].id) {
+            return message.reply(`Out of turn play! To jump in, add \`j\` to the start of your play message.`)
+        }
         // custom check
         if (typeof card.customCheck == 'function') {
             console.log(`custom check recognized`)
@@ -84,7 +89,7 @@ module.exports = class InputHandler {
         }
         game.last_pile = play_object["dish"]
         game.moderate_jelly()
-        await channel.send({ 
+        game.recent_play_message = await channel.send({ 
             embeds: [game.display_embed(`play_card`, {text: play_text})],
             components: [game.buttons()]})
     }
@@ -108,7 +113,7 @@ module.exports = class InputHandler {
         if (await game.end_turn() == null) {
             return
         }
-        return await channel.send({embeds: [
+        game.recent_play_message = await channel.send({embeds: [
             game.display_embed(`play_card`, {text: play_text})
         ],
         components: [game.buttons()]})
@@ -137,9 +142,16 @@ module.exports = class InputHandler {
         }
         let play_text = `${player.name} jumped in with a ${card.display_text()} on dish ${play_object["dish"] + 1}.`
         const components = game.is_processing ? [] : [game.buttons()]
-        await channel.send({ 
-            embeds: [game.display_embed(`play_card`, {text: play_text})],
-            components})
+        if (!game.recent_play_message) {
+            await channel.send({ 
+                embeds: [game.display_embed(`play_card`, {text: play_text})],
+                components})
+        }
+        else {
+            await game.recent_play_message.edit({ 
+                embeds: [game.display_embed(`play_card`, {text: play_text})],
+                components})
+        }
     }
     static async sumHandler(game, message, player) {
         const {author, content, channel} = message
@@ -186,9 +198,9 @@ module.exports = class InputHandler {
         switch (customId) {
             case `hand`:
                 if (!player) {
-                    return button_interaction.reply({ephemeral: true, content: `You're not in game game!`})
+                    return button_interaction.reply({ephemeral: true, content: `You're not in the game!`})
                 }
-                button_interaction.reply({ephemeral: true, embeds: [player.hand.embed()], components: player.hand.buttons()}) // replace with: content: player.hand.text()
+                await button_interaction.reply(player.hand.display()) // replace with: content: player.hand.text()
                 break
             case `table`:
                 button_interaction.reply({ephemeral: true, embeds: [game.display_embed(`table`)], components: [game.buttons()]})
@@ -196,6 +208,14 @@ module.exports = class InputHandler {
             case `players`:
                 break
             case `history`:
+                break
+            case `display-image`:
+                player.hand.use_image = true
+                await button_interaction.reply(player.hand.display())
+                break
+            case `display-text`:
+                player.hand.use_image = false
+                await button_interaction.reply(player.hand.display()) 
                 break
             default: 
                 try {

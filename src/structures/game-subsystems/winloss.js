@@ -80,7 +80,7 @@ module.exports = class WinLossHandler {
                 win_reason = 'All the pile\'s cards match in color or number.'
                 break
             case "sudoku":
-                win_reason = "All piles' cards sum up to either the first or last pile, and all other piles can be linked through either icon or color (literally how did you do game)."
+                win_reason = "All piles' cards sum up to either the first or last pile, and all other piles can be linked through either icon or color (literally how did you do this)."
                 break
         }
         game.winner = winner.player
