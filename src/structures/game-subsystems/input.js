@@ -8,6 +8,7 @@ module.exports = class InputHandler {
         if (game.is_processing) {
             return
         }
+        console.log(`handling card input`)
         const {author, content, channel} = message
         const pre_effect_current_turn = game.current_turn
         const play_object = player.hand.parse(content)
@@ -25,6 +26,10 @@ module.exports = class InputHandler {
         const discard_pile = game.discard_piles[play_object["dish"]]
         let is_valid = false
         const card = player.hand[play_object["card_index"]]
+        // check if out of turn
+        if (!card.canPlayOutOfTurn && player.id != game.player_list[game.current_turn].id) {
+            return message.reply(`Out of turn play! To jump in, add \`j\` to the start of your play message.`)
+        }
         // custom check
         if (typeof card.customCheck == 'function') {
             console.log(`custom check recognized`)

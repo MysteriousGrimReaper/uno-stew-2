@@ -92,7 +92,12 @@ module.exports = class CommandProcessor {
     static moderate_jelly(game) {
         for (const dp of game.discard_piles) {
             if (dp.top_card.color == "j") {
-                dp.top_card.color = dp[dp.length - 2].color
+                try {
+                    dp.top_card.color = dp[dp.length - 2].color
+                }
+                catch {
+                    console.log(`under 2 cards`)
+                }
             }
         }
     }

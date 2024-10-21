@@ -48,10 +48,10 @@ module.exports = class Gameplay {
      */
     static flip(game) {
         game.deck.flip()
-        for (const d in game.discard_piles) {
+        for (const d of game.discard_piles) {
             d.flip()
         }
-        for (const p in game.player_list) {
+        for (const p of game.player_list) {
             p.hand.flip()
         }
     }
