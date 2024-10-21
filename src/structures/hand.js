@@ -185,7 +185,16 @@ module.exports = class Hand extends Array {
                 .setEmoji(card.emoji)
             }))
         })
-        return buttons
+        const hand_util_buttons = [
+            new ActionRowBuilder().setComponents([
+                new ButtonBuilder()
+                .setStyle(ButtonStyle.Success)
+                .setCustomId(`display-${this.use_image ? `text` : `image`}`)
+                .setEmoji(`${this.use_image ? `📝` : `🖼️`}`)
+                .setLabel(`Display ${this.use_image ? `Text` : `Image`}`)])
+        ]
+        return [...hand_util_buttons,
+            ...buttons]
     }
     /**
      * Flip every card in the hand.

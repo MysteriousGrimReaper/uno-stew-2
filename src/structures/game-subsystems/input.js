@@ -193,9 +193,9 @@ module.exports = class InputHandler {
         switch (customId) {
             case `hand`:
                 if (!player) {
-                    return button_interaction.reply({ephemeral: true, content: `You're not in game game!`})
+                    return button_interaction.reply({ephemeral: true, content: `You're not in the game!`})
                 }
-                button_interaction.reply(player.hand.display()) // replace with: content: player.hand.text()
+                await button_interaction.reply(player.hand.display()) // replace with: content: player.hand.text()
                 break
             case `table`:
                 button_interaction.reply({ephemeral: true, embeds: [game.display_embed(`table`)], components: [game.buttons()]})
@@ -203,6 +203,14 @@ module.exports = class InputHandler {
             case `players`:
                 break
             case `history`:
+                break
+            case `display-image`:
+                player.hand.use_image = true
+                await button_interaction.reply(player.hand.display())
+                break
+            case `display-text`:
+                player.hand.use_image = false
+                await button_interaction.reply(player.hand.display()) 
                 break
             default: 
                 try {
