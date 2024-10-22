@@ -77,5 +77,5 @@ switch (args[0]) {
  *      /if "all-red" is a flag, set the color of all cards to red 
  *      /if "all-wild" is a flag, set all cards to be a wild card
  *      /check for a "icon:[symbol]" flag and set all cards to have that symbol
- *      if [symbol] is a comma separated list, alternate between the icons given
+ *      /if [symbol] is a comma separated list, alternate between the icons given
  */
